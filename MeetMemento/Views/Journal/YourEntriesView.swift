@@ -79,7 +79,7 @@ struct YourEntriesView: View {
             Text("Failed to load entries")
                 .font(type.h3)
                 .fontWeight(.semibold)
-                .headerGradient()
+                .foregroundStyle(GrayScale.gray900)
             Text(message)
                 .font(type.body)
                 .foregroundStyle(theme.mutedForeground)
@@ -96,17 +96,17 @@ struct YourEntriesView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Spacer()
 
             Image(systemName: "book.closed.fill")
                 .font(.system(size: 36))
-                .headerGradient()
+                .foregroundStyle(PrimaryScale.primary700)
 
             Text("No journal entries yet")
                 .font(type.h3)
                 .fontWeight(.semibold)
-                .headerGradient()
+                .foregroundStyle(GrayScale.gray900)
 
             Text("Start writing your first entry to see it here.")
                 .font(type.body)

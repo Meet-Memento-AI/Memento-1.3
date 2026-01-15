@@ -32,8 +32,8 @@ public struct Typography {
     public init(
         micro: CGFloat = 11,
         caption: CGFloat = 13,
-        bodyS: CGFloat = 15,
-        bodyL: CGFloat = 18,
+        bodyS: CGFloat = 14,
+        bodyL: CGFloat = 16,
         titleXS: CGFloat = 16,
         titleS: CGFloat = 20,
         titleM: CGFloat = 24,
@@ -61,6 +61,9 @@ public struct Typography {
     private func lineSpacing(for size: CGFloat) -> CGFloat { max(0, size * 0.5) }
     private func headingLineSpacing(for size: CGFloat) -> CGFloat { max(0, size * 0.2) }
 
+    // Body text specific line height: 14pt font + 6pt spacing = 20pt line height
+    public var bodyLineSpacing: CGFloat { 6 }
+
     // MARK: - Font helpers
     private func headingFont(size: CGFloat) -> Font {
         // Dynamically pick Recoleta Black or SemiBold based on headingWeight
@@ -86,8 +89,8 @@ public struct Typography {
     // MARK: - Semantic Fonts
     public var h1: Font { headingFont(size: displayXL) }
     public var h2: Font { headingFont(size: displayL) }
-    public var h3: Font { headingFont(size: titleM) }
-    public var h4: Font { headingFont(size: titleS) }
+    public var h3: Font { Font.custom(headingFontNameSemiBold, size: titleM, relativeTo: .title) }
+    public var h4: Font { Font.custom(headingFontNameSemiBold, size: titleS, relativeTo: .title) }
     public var h5: Font { headingFont(size: titleXS) }
     public var h6: Font { bodyFont(size: titleXS, weight: .bold) }
 
@@ -177,7 +180,7 @@ public extension View {
     }
     func bodyText(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.body)
-            .modifier(env.typography.lineSpacingModifier(for: env.typography.bodyL))
+            .lineSpacing(env.typography.bodyLineSpacing)
     }
     func labelText(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.label)

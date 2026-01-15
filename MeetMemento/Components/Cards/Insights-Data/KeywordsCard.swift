@@ -1,42 +1,69 @@
+//
+//  KeywordsCard.swift
+//  MeetMemento
+//
+//  Created by Sebastian Mendo on 1/13/26.
+//
+
 import SwiftUI
 
-/// Themes section specifically styled for Insights view (white on purple background)
-public struct InsightsThemesSection: View {
-    public let themes: [String]
+/// Keywords/Themes card matching the SentimentAnalysisCard design
+/// Deep purple card with gradient border displaying theme tags
+struct KeywordsCard: View {
+    // MARK: - Inputs
+    let keywords: [String]
 
+    // MARK: - Environment
+    @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
-    public init(themes: [String]) {
-        self.themes = themes
-    }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header with icon
-            HStack(alignment: .center, spacing: 8) {
+    // MARK: - Body
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            // Header with sparkles icon
+            HStack(spacing: 8) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text("Your Themes")
-                    .font(type.h6)
+                Text("KEYWORDS")
+                    .font(type.captionBold)
+                    .tracking(0.5)
                     .foregroundStyle(.white)
+
+                Spacer()
             }
 
-            // Wrapping tags
+            // Wrapping keywords using InsightsThemeTag
             InsightsTagFlowLayout(hSpacing: 12, vSpacing: 12) {
-                ForEach(themes, id: \.self) { themeText in
-                    InsightsThemeTag(themeText)
+                ForEach(keywords, id: \.self) { keyword in
+                    InsightsThemeTag(keyword)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(24)
+        .background(PrimaryScale.primary900)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            PrimaryScale.primary400,
+                            PrimaryScale.primary700
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
     }
 }
 
-// MARK: - Flow Layout (wraps children to new lines)
+// MARK: - Flow Layout Helper
 
-/// A lightweight wrapping layout for chips/tags. iOS 16+.
+/// A lightweight wrapping layout for keywords/tags
 private struct InsightsTagFlowLayout<Content: View>: View {
     let hSpacing: CGFloat
     let vSpacing: CGFloat
@@ -54,15 +81,9 @@ private struct InsightsTagFlowLayout<Content: View>: View {
         }
     }
 
-    // Inner type that conforms to Layout for performance
     private struct _InsightsTagFlowLayout: Layout {
         let hSpacing: CGFloat
         let vSpacing: CGFloat
-
-        init(hSpacing: CGFloat, vSpacing: CGFloat) {
-            self.hSpacing = hSpacing
-            self.vSpacing = vSpacing
-        }
 
         func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
             let maxWidth = proposal.width ?? .infinity
@@ -74,7 +95,6 @@ private struct InsightsTagFlowLayout<Content: View>: View {
                 let size = subview.sizeThatFits(.unspecified)
 
                 if x > 0 && x + size.width + hSpacing > maxWidth {
-                    // next line
                     x = 0
                     y += rowHeight + vSpacing
                     rowHeight = 0
@@ -96,7 +116,6 @@ private struct InsightsTagFlowLayout<Content: View>: View {
                 let size = subview.sizeThatFits(.unspecified)
 
                 if x > 0 && x + size.width + hSpacing > maxWidth {
-                    // wrap
                     x = 0
                     y += rowHeight + vSpacing
                     rowHeight = 0
@@ -113,36 +132,57 @@ private struct InsightsTagFlowLayout<Content: View>: View {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#Preview {
+#Preview("Reference Design") {
     ZStack {
-        // Purple gradient background to match Insights view
+        // Gradient background matching Insights view
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(hex: "#411976"),
-                Color(hex: "#57219C")
+                PrimaryScale.primary800,
+                PrimaryScale.primary700
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
 
-        ScrollView {
-            InsightsThemesSection(
-                themes: [
-                    "Work related stress",
-                    "Keeping an image",
-                    "Growing from within",
-                    "Closing doors",
-                    "Reaching acceptance",
-                    "Realizing the truth",
-                    "Choosing better",
-                    "Living your own life"
-                ]
-            )
-            .padding(20)
-        }
+        KeywordsCard(
+            keywords: [
+                "Stress",
+                "Keeping an image",
+                "Growing from within",
+                "New starts",
+                "Acceptance",
+                "Realizing the truth",
+                "Choosing better",
+            ]
+        )
+        .padding(20)
+    }
+    .useTheme()
+    .useTypography()
+}
+
+#Preview("Fewer Keywords") {
+    ZStack {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                PrimaryScale.primary800,
+                PrimaryScale.primary700
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+
+        KeywordsCard(
+            keywords: [
+                "Growth mindset",
+                "Self-reflection",
+                "Emotional awareness"
+            ]
+        )
     }
     .useTheme()
     .useTypography()

@@ -2,21 +2,21 @@
 //  Logger.swift
 //  MeetMemento
 //
+//  Minimal logging stub (UI boilerplate).
+//
 
 import Foundation
 import os.log
 
+/// Minimal logger stub for UI boilerplate
 struct AppLogger {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.meetmemento"
-    
-    static let general = os.Logger(subsystem: subsystem, category: "general")
-    static let network = os.Logger(subsystem: subsystem, category: "network")
-    static let ui = os.Logger(subsystem: subsystem, category: "ui")
-    static let data = os.Logger(subsystem: subsystem, category: "data")
-    
-    static func log(_ message: String, category: os.Logger? = nil, type: OSLogType = .default) {
-        let logger = category ?? general
-        logger.log(level: type, "\(message)")
+    static let general = "general"
+    static let network = "network"
+    static let persistent = "persistent"
+
+    static func log(_ message: String, category: String = general, type: OSLogType = .default) {
+        #if DEBUG
+        print("[\(category)] \(message)")
+        #endif
     }
 }
-

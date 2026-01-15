@@ -69,7 +69,7 @@ struct Theme {
         let sm: CGFloat = 6
         let md: CGFloat = 8
         let lg: CGFloat = 10
-        let xl: CGFloat = 14
+        let xl: CGFloat = 32
         let round: CGFloat = 999
     }
     let radius = Radius()
@@ -201,8 +201,8 @@ struct Theme {
         backgroundGradientStart: PrimaryScale.primary600,
         backgroundGradientEnd: PrimaryScale.primary700,
 
-        insightsBackgroundStart: PrimaryScale.primary800,
-        insightsBackgroundEnd: PrimaryScale.primary700,
+        insightsBackgroundStart: PrimaryScale.primary900,
+        insightsBackgroundEnd: PrimaryScale.primary900,
 
         sidebar: BaseColors.offWhite,
         sidebarForeground: GrayScale.gray900,
@@ -257,8 +257,8 @@ struct Theme {
         backgroundGradientStart: PrimaryScale.primary600,
         backgroundGradientEnd: PrimaryScale.primary700,
 
-        insightsBackgroundStart: PrimaryScale.primary800,
-        insightsBackgroundEnd: PrimaryScale.primary700,
+        insightsBackgroundStart: PrimaryScale.primary900,
+        insightsBackgroundEnd: PrimaryScale.primary900,
 
         sidebar: GrayScale.gray800,
         sidebarForeground: GrayScale.gray50,

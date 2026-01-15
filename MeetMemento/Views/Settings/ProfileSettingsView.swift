@@ -11,7 +11,6 @@ public struct ProfileSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
-    @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var firstName: String = ""
     @State private var lastName: String = ""
@@ -133,13 +132,13 @@ public struct ProfileSettingsView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(theme.foreground)
-                }
+                IconButtonNav(
+                    icon: "chevron.left",
+                    iconSize: 18,
+                    buttonSize: 40,
+                    enableHaptic: true,
+                    onTap: { dismiss() }
+                )
             }
         }
         .onAppear {
@@ -160,16 +159,8 @@ public struct ProfileSettingsView: View {
     // MARK: - Actions
 
     private func loadCurrentProfile() {
-        guard let user = authViewModel.currentUser else { return }
-
-        // Pre-fill with current user data using pattern matching for AnyJSON
-        if case .string(let firstNameValue) = user.userMetadata["first_name"] {
-            firstName = firstNameValue
-        }
-
-        if case .string(let lastNameValue) = user.userMetadata["last_name"] {
-            lastName = lastNameValue
-        }
+        firstName = UserDefaults.standard.string(forKey: "memento_first_name") ?? ""
+        lastName = UserDefaults.standard.string(forKey: "memento_last_name") ?? ""
     }
 
     private func saveProfile() {
@@ -183,28 +174,22 @@ public struct ProfileSettingsView: View {
         let trimmedLastName = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task {
-            do {
-                try await authViewModel.updateProfile(
-                    firstName: trimmedFirstName,
-                    lastName: trimmedLastName
-                )
+            // Simulate network delay for better UX
+            try? await Task.sleep(nanoseconds: 500_000_000)
 
-                await MainActor.run {
-                    isSaving = false
-                    showSuccessMessage = true
+            UserDefaults.standard.set(trimmedFirstName, forKey: "memento_first_name")
+            UserDefaults.standard.set(trimmedLastName, forKey: "memento_last_name")
 
-                    // Haptic feedback
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            await MainActor.run {
+                isSaving = false
+                showSuccessMessage = true
 
-                    // Dismiss after short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        dismiss()
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    isSaving = false
-                    errorMessage = "Failed to update profile. Please try again."
+                // Haptic feedback
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+                // Dismiss after short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    dismiss()
                 }
             }
         }
@@ -216,7 +201,6 @@ public struct ProfileSettingsView: View {
         ProfileSettingsView()
             .useTheme()
             .useTypography()
-            .environmentObject(AuthViewModel())
     }
     .preferredColorScheme(.light)
 }
@@ -226,7 +210,6 @@ public struct ProfileSettingsView: View {
         ProfileSettingsView()
             .useTheme()
             .useTypography()
-            .environmentObject(AuthViewModel())
     }
     .preferredColorScheme(.dark)
 }

@@ -113,13 +113,13 @@ public struct AppearanceSettingsView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(theme.foreground)
-                }
+                IconButtonNav(
+                    icon: "chevron.left",
+                    iconSize: 18,
+                    buttonSize: 40,
+                    enableHaptic: true,
+                    onTap: { dismiss() }
+                )
             }
         }
         .onAppear {

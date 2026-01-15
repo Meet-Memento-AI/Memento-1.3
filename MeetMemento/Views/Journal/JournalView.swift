@@ -12,6 +12,7 @@ public struct JournalView: View {
     @EnvironmentObject var entryViewModel: EntryViewModel
 
     let onSettingsTapped: () -> Void
+    let onAIChatTapped: () -> Void
     let onNavigateToEntry: (EntryRoute) -> Void
 
     @Environment(\.theme) private var theme
@@ -19,10 +20,12 @@ public struct JournalView: View {
     public init(
         initialTab: JournalTopTab = .yourEntries,
         onSettingsTapped: @escaping () -> Void = {},
+        onAIChatTapped: @escaping () -> Void = {},
         onNavigateToEntry: @escaping (EntryRoute) -> Void = { _ in }
     ) {
         _topSelection = State(initialValue: initialTab)
         self.onSettingsTapped = onSettingsTapped
+        self.onAIChatTapped = onAIChatTapped
         self.onNavigateToEntry = onNavigateToEntry
     }
 
@@ -65,7 +68,8 @@ public struct JournalView: View {
             Header(
                 variant: .tabs,
                 selection: $topSelection,
-                onSettingsTapped: onSettingsTapped
+                onSettingsTapped: onSettingsTapped,
+                onAIChatTapped: onAIChatTapped
             )
             .background(Color.clear)
             .zIndex(10) // Ensure header stays on top

@@ -23,6 +23,11 @@ public enum SettingsRoute: Hashable {
     case about
 }
 
+// MARK: - Navigation route for AI Chat
+public enum AIChatRoute: Hashable {
+    case main
+}
+
 public struct ContentView: View {
     // Navigation path for entry editor and settings
     @State private var navigationPath = NavigationPath()
@@ -30,13 +35,8 @@ public struct ContentView: View {
     // Entry view model for managing journal entries (shared across views)
     @StateObject private var entryViewModel = EntryViewModel()
 
-    // Paywall state
-    @State private var showPaywall = false
-    @State private var paywallIsDismissible = true
-
     @Environment(\.theme) private var theme
     @EnvironmentObject var authViewModel: AuthViewModel
-    @EnvironmentObject var subscriptionManager: SubscriptionManager
 
     public init() {}
 
@@ -50,6 +50,9 @@ public struct ContentView: View {
                     onSettingsTapped: {
                         navigationPath.append(SettingsRoute.main)
                     },
+                    onAIChatTapped: {
+                        navigationPath.append(AIChatRoute.main)
+                    },
                     onNavigateToEntry: { route in
                         navigationPath.append(route)
                     }
@@ -59,11 +62,8 @@ public struct ContentView: View {
                 // Bottom navigation with FAB only
                 BottomNavigation(
                     onJournalCreate: {
-                        Task {
-                            await handleCreateEntry()
-                        }
-                    },
-                    isDisabled: subscriptionManager.isCheckingPermission
+                        handleCreateEntry()
+                    }
                 )
             }
             .ignoresSafeArea(.all, edges: .bottom)
@@ -88,25 +88,21 @@ public struct ContentView: View {
                 switch route {
                 case .main:
                     SettingsView()
-                        .environmentObject(authViewModel)
                         .environmentObject(entryViewModel)
                 case .profile:
                     ProfileSettingsView()
-                        .environmentObject(authViewModel)
                 case .appearance:
                     AppearanceSettingsView()
                 case .about:
                     AboutSettingsView()
                 }
             }
-            .fullScreenCover(isPresented: $showPaywall) {
-                PaywallView(isDismissible: paywallIsDismissible) {
-                    // On purchase complete, refresh subscription status
-                    Task {
-                        await subscriptionManager.checkSubscriptionStatus()
-                    }
+            .navigationDestination(for: AIChatRoute.self) { route in
+                switch route {
+                case .main:
+                    AIChatView()
+                        .toolbar(.hidden, for: .navigationBar)
                 }
-                .environmentObject(subscriptionManager)
             }
         }
         .useTheme()
@@ -116,19 +112,10 @@ public struct ContentView: View {
 
     // MARK: - Actions
 
-    /// Handles create entry action with subscription check
-    private func handleCreateEntry() async {
-        // Check if user can create entry
-        let canCreate = await subscriptionManager.canCreateEntry()
-
-        if canCreate {
-            // User can create entry - navigate to AddEntryView
-            navigationPath.append(EntryRoute.create)
-        } else {
-            // User hit limit - show paywall (always dismissible)
-            paywallIsDismissible = true
-            showPaywall = true
-        }
+    /// Handles create entry action
+    private func handleCreateEntry() {
+        // Always allow entry creation
+        navigationPath.append(EntryRoute.create)
     }
 }
 

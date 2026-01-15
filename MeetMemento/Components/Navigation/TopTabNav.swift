@@ -101,6 +101,7 @@ public struct TopNav: View {
                         ? theme.primaryForeground
                         : theme.primary
                 )
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 16)
                 .frame(height: 40)
                 .background(

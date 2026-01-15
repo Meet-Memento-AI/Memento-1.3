@@ -2,33 +2,27 @@
 //  CreateAccountBottomSheet.swift
 //  MeetMemento
 //
-//  Bottom sheet component for user account creation
+//  Bottom sheet component for user account creation (UI boilerplate).
 //
 
 import SwiftUI
-import AuthenticationServices
 
 public struct CreateAccountBottomSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
     @EnvironmentObject var authViewModel: AuthViewModel
-    
+
     @State private var email: String = ""
-    @State private var password: String = ""
-    @State private var confirmPassword: String = ""
     @State private var status: String = ""
     @State private var isLoading: Bool = false
-    @State private var appleNativeError: String = ""
-    @State private var isLoadingAppleNative = false
-    @State private var navigateToOTP: Bool = false
 
     public var onSignUpSuccess: (() -> Void)?
-    
+
     public init(onSignUpSuccess: (() -> Void)? = nil) {
         self.onSignUpSuccess = onSignUpSuccess
     }
-    
+
     public var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -38,13 +32,13 @@ public struct CreateAccountBottomSheet: View {
                     .frame(width: 36, height: 5)
                     .padding(.top, 8)
                     .padding(.bottom, 20)
-                
+
                 // Header
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Create account")
                         .font(type.h3)
                         .headerGradient()
-                    
+
                     Text("Let's learn about you and we'll help you get started")
                         .font(type.bodySmall)
                         .foregroundStyle(theme.mutedForeground)
@@ -53,7 +47,7 @@ public struct CreateAccountBottomSheet: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 32)
                 .padding(.bottom, 24)
-                
+
                 // Content
                 VStack(spacing: 24) {
                     // Email input
@@ -61,7 +55,7 @@ public struct CreateAccountBottomSheet: View {
                         Text("Email")
                             .font(type.bodyBold)
                             .foregroundStyle(theme.foreground)
-                        
+
                         AppTextField(
                             placeholder: "Enter your email",
                             text: $email,
@@ -69,92 +63,62 @@ public struct CreateAccountBottomSheet: View {
                             textInputAutocapitalization: .never
                         )
                     }
-                    
-                    // Continue button
-                    Button(action: createAccountWithEmail) {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .tint(.white)
-                                    .scaleEffect(0.8)
-                            } else {
-                                Text("Continue")
-                                    .font(type.button)
-                                    .fontWeight(.bold)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(theme.primary)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+
+                    // Continue button (stub)
+                    Button(action: {
+                        status = "Account creation is disabled in this boilerplate."
+                    }) {
+                        Text("Continue")
+                            .font(type.button)
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(theme.primary)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                     }
-                    .disabled(isLoading || email.isEmpty)
-                    .opacity((isLoading || email.isEmpty) ? 0.6 : 1.0)
-                    
+                    .disabled(email.isEmpty)
+                    .opacity(email.isEmpty ? 0.6 : 1.0)
+
                     // Divider
                     HStack {
-                        Rectangle()
-                            .fill(theme.border)
-                            .frame(height: 1)
-                        
-                        Text("or")
-                            .font(type.body)
-                            .foregroundStyle(theme.mutedForeground)
-                            .padding(.horizontal, 16)
-                        
-                        Rectangle()
-                            .fill(theme.border)
-                            .frame(height: 1)
+                        Rectangle().fill(theme.border).frame(height: 1)
+                        Text("or").font(type.body).foregroundStyle(theme.mutedForeground).padding(.horizontal, 16)
+                        Rectangle().fill(theme.border).frame(height: 1)
                     }
                     .padding(.vertical, 8)
-                    
-                    // Social auth buttons
-                    VStack(spacing: 12) {
-                        // Apple Sign In
-                        AppleSignInButton(title: "Continue with Apple", style: .black) {
-                            signUpWithAppleNative()
-                        }
-                        .disabled(isLoadingAppleNative)
-                        
-                        // Google Sign In
-                        GoogleSignInButton(title: "Continue with Google") {
-                            Task {
-                                do {
-                                    try await AuthService.shared.signInWithGoogle()
-                                    // Check auth state after OAuth completes (includes onboarding check)
-                                    await authViewModel.checkAuthState()
 
-                                    // OAuth success - dismiss sheet and let WelcomeView handle onboarding
-                                    await MainActor.run {
-                                        dismiss()
-                                        onSignUpSuccess?()
-                                    }
-                                } catch {
-                                    await MainActor.run {
-                                        status = "❌ Google sign-in failed: \(error.localizedDescription)"
-                                    }
-                                }
-                            }
+                    // Social auth buttons (stubs)
+                    VStack(spacing: 12) {
+                        Button(action: { status = "Apple sign-up (stub)" }) {
+                            Text("Continue with Apple")
+                                .font(type.button)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(.black)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg))
+                        }
+
+                        Button(action: { status = "Google sign-up (stub)" }) {
+                            Text("Continue with Google")
+                                .font(type.button)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(theme.card)
+                                .foregroundStyle(theme.foreground)
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg))
                         }
                     }
                     .padding(.vertical, 24)
 
-                    
                     // Status message
                     if !status.isEmpty {
                         Text(status)
                             .font(type.body)
-                            .foregroundStyle(status.contains("✅") ? .green : .red)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
-                    }
-                    
-                    // Apple Sign In error
-                    if !appleNativeError.isEmpty {
-                        Text(appleNativeError)
-                            .font(type.body)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(status.contains("✅") ? .green : theme.mutedForeground)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                     }
@@ -167,109 +131,6 @@ public struct CreateAccountBottomSheet: View {
         }
         .presentationDetents([.height(540)])
         .presentationDragIndicator(.hidden)
-        .fullScreenCover(isPresented: $navigateToOTP) {
-            NavigationStack {
-                OTPVerificationView(email: email, isSignUp: true)
-                    .environmentObject(authViewModel)
-                    .useTheme()
-                    .useTypography()
-            }
-            .onChange(of: authViewModel.authState) { oldState, newState in
-                // When user becomes authenticated (OTP verified), dismiss everything
-                AppLogger.log("CreateAccountBottomSheet: authState changed from \(oldState) to \(newState)", category: AppLogger.general)
-                NSLog("🔵 CreateAccountBottomSheet: Auth state changed to \(newState)")
-
-                if newState.isAuthenticated {
-                    NSLog("🔵 CreateAccountBottomSheet: User authenticated, dismissing sheet")
-
-                    // Dismiss OTP fullScreenCover first
-                    navigateToOTP = false
-
-                    // Then dismiss this sheet
-                    // WelcomeView will detect auth state and show onboarding
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-    
-    
-    // MARK: - Actions
-    
-    private func createAccountWithEmail() {
-        guard !email.isEmpty else { return }
-
-        isLoading = true
-        status = ""
-
-        Task {
-            do {
-                try await authViewModel.sendOTP(email: email)
-                await MainActor.run {
-                    status = "✅ Code sent to \(email)"
-                    isLoading = false
-                    // Navigate to OTP entry screen as full page
-                    navigateToOTP = true
-                }
-            } catch {
-                await MainActor.run {
-                    status = "❌ Failed to send code: \(error.localizedDescription)"
-                    isLoading = false
-                }
-            }
-        }
-    }
-    
-    private func signUpWithAppleNative() {
-        isLoadingAppleNative = true
-        appleNativeError = ""
-
-        let nonce: String
-        do {
-            nonce = try NonceGenerator.randomNonce()
-        } catch {
-            appleNativeError = "Failed to generate secure authentication nonce"
-            isLoadingAppleNative = false
-            return
-        }
-        let hashedNonce = NonceGenerator.sha256(nonce)
-
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
-        request.nonce = hashedNonce
-
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        // Updated delegate with new completion signature
-        let delegate = AppleAuthDelegate(nonce: nonce) { [self] errorMessage, firstName, lastName in
-            DispatchQueue.main.async {
-                self.isLoadingAppleNative = false
-                if let error = errorMessage {
-                    self.appleNativeError = error
-                } else {
-                    // Store pending names in AuthViewModel (if provided by Apple)
-                    if let first = firstName, let last = lastName, !first.isEmpty, !last.isEmpty {
-                        self.authViewModel.storePendingAppleProfile(firstName: first, lastName: last)
-                        AppLogger.log("✅ Stored Apple names for CreateAccountView", category: AppLogger.general)
-                    } else {
-                        AppLogger.log("⚠️ No Apple names provided (returning user)", category: AppLogger.general)
-                    }
-
-                    // Check auth state to ensure proper onboarding flow trigger
-                    Task {
-                        await self.authViewModel.checkAuthState()
-                    }
-
-                    // Success - dismiss sheet and let WelcomeView handle onboarding
-                    self.dismiss()
-                    self.onSignUpSuccess?()
-                }
-            }
-        }
-        controller.delegate = delegate
-        controller.presentationContextProvider = delegate
-        controller.performRequests()
     }
 }
 
