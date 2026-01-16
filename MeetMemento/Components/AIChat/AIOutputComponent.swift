@@ -29,71 +29,155 @@ public struct AIOutputContent: Hashable {
 
 public struct AIOutputComponent: View {
     let content: AIOutputContent
+    var animate: Bool
     var onCitationsTapped: (() -> Void)?
-    
+
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
-    
+
+    @State private var displayedHeading1 = ""
+    @State private var displayedHeading2 = ""
+    @State private var displayedBody = ""
+    @State private var showCitation = false
+    @State private var isAnimating = false
+    @State private var hasAnimated = false
+
+    // Fast typing speed like ChatGPT (characters per second)
+    private let charactersPerSecond: Double = 120
+
     public init(
         content: AIOutputContent,
+        animate: Bool = true,
         onCitationsTapped: (() -> Void)? = nil
     ) {
         self.content = content
+        self.animate = animate
         self.onCitationsTapped = onCitationsTapped
     }
-    
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Citation link (shown if citations exist)
-            if let citations = content.citations, !citations.isEmpty {
-                citationLink
-            }
+            
             
             // Heading 1 (if provided) - Using Manrope
             if let heading1 = content.heading1, !heading1.isEmpty {
-                Text(LocalizedStringKey(heading1))
-                    .font(.custom("Manrope-Bold", size: 24))
-                    .foregroundStyle(GrayScale.gray900)
-                    .modifier(type.headingLineSpacingModifier(for: 20))
+                if !displayedHeading1.isEmpty || !animate {
+                    Text(animate ? displayedHeading1 : heading1)
+                        .font(.custom("Manrope-Bold", size: 24))
+                        .foregroundStyle(GrayScale.gray900)
+                        .modifier(type.headingLineSpacingModifier(for: 20))
+                }
             }
-            
+
             // Heading 2 (if provided) - Using Manrope
             if let heading2 = content.heading2, !heading2.isEmpty {
-                Text(LocalizedStringKey(heading2))
-                    .font(.custom("Manrope-Bold", size: 18))
-                    .foregroundStyle(GrayScale.gray900)
-                    .modifier(type.headingLineSpacingModifier(for: 16))
-                    .padding(.top, (content.heading1?.isEmpty == false) ? 4 : 0)
+                if !displayedHeading2.isEmpty || !animate {
+                    Text(animate ? displayedHeading2 : heading2)
+                        .font(.custom("Manrope-Bold", size: 18))
+                        .foregroundStyle(GrayScale.gray900)
+                        .modifier(type.headingLineSpacingModifier(for: 16))
+                        .padding(.top, (content.heading1?.isEmpty == false) ? 4 : 0)
+                }
             }
-            
-            // Body text with full markdown support
-            Text(LocalizedStringKey(content.body))
-                .font(.custom("Manrope-Regular", size: 14))
-                .foregroundStyle(GrayScale.gray700)
-                .lineSpacing(4) // 14pt font + 6pt spacing = 20pt line height
+
+            // Body text with typewriter effect
+            if !displayedBody.isEmpty || !animate {
+                Text(LocalizedStringKey(animate ? displayedBody : content.body))
+                    .font(.custom("Manrope-Medium", size: 16))
+                    .foregroundStyle(GrayScale.gray700)
+                    .lineSpacing(4) // 16 + 4 = 20pt line height
+            }
+
+            // Citation link with fade-in dissolve
+            if let citations = content.citations, !citations.isEmpty {
+                CitationLink(count: citations.count, onTap: onCitationsTapped)
+                    .opacity(showCitation ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.4), value: showCitation)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    
-    // MARK: - Citation Link
-    
-    private var citationLink: some View {
-        Button {
-            onCitationsTapped?()
-        } label: {
-            HStack(spacing: 6) {
-                
-                Text("View journal citations")
-                    .font(type.bodySmall)
-                    .fontWeight(.bold)
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-
+        .onAppear {
+            if animate && !hasAnimated {
+                startTypewriterSequence()
+            } else if !animate {
+                showAllContent()
             }
-            .foregroundStyle(theme.primary)
         }
-        .padding(.bottom, 4)
+        .onChange(of: content) { _, _ in
+            if animate {
+                resetAnimation()
+                startTypewriterSequence()
+            } else {
+                showAllContent()
+            }
+        }
+    }
+
+    // MARK: - Animation Helpers
+
+    private func showAllContent() {
+        displayedHeading1 = content.heading1 ?? ""
+        displayedHeading2 = content.heading2 ?? ""
+        displayedBody = content.body
+        showCitation = true
+        hasAnimated = true
+    }
+
+    private func resetAnimation() {
+        displayedHeading1 = ""
+        displayedHeading2 = ""
+        displayedBody = ""
+        showCitation = false
+        hasAnimated = false
+        isAnimating = false
+    }
+
+    // MARK: - Typewriter Animation Sequence
+
+    private func startTypewriterSequence() {
+        guard !isAnimating else { return }
+        isAnimating = true
+
+        let interval = 1.0 / charactersPerSecond
+        var totalDelay: Double = 0
+
+        // Phase 1: Heading 1
+        if let heading1 = content.heading1, !heading1.isEmpty {
+            let characters = Array(heading1)
+            for (index, character) in characters.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay + Double(index) * interval) {
+                    displayedHeading1.append(character)
+                }
+            }
+            totalDelay += Double(characters.count) * interval + 0.05
+        }
+
+        // Phase 2: Heading 2
+        if let heading2 = content.heading2, !heading2.isEmpty {
+            let characters = Array(heading2)
+            for (index, character) in characters.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay + Double(index) * interval) {
+                    displayedHeading2.append(character)
+                }
+            }
+            totalDelay += Double(characters.count) * interval + 0.05
+        }
+
+        // Phase 3: Body
+        let bodyCharacters = Array(content.body)
+        for (index, character) in bodyCharacters.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay + Double(index) * interval) {
+                displayedBody.append(character)
+            }
+        }
+        totalDelay += Double(bodyCharacters.count) * interval
+
+        // Phase 4: Fade in citation button
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay + 0.2) {
+            showCitation = true
+            isAnimating = false
+            hasAnimated = true
+        }
     }
 }
 

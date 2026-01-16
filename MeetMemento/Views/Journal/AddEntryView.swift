@@ -10,8 +10,9 @@ import SwiftUI
 // MARK: - Entry State
 
 public enum EntryState: Hashable {
-    case create           // Regular journal entry
-    case edit(Entry)      // Editing existing entry
+    case create                    // Regular journal entry
+    case createWithTitle(String)   // Create with pre-filled title
+    case edit(Entry)               // Editing existing entry
 }
 
 public struct AddEntryView: View {
@@ -48,6 +49,9 @@ public struct AddEntryView: View {
         switch state {
         case .create:
             _title = State(initialValue: "")
+            _text = State(initialValue: "")
+        case .createWithTitle(let prefillTitle):
+            _title = State(initialValue: prefillTitle)
             _text = State(initialValue: "")
         case .edit(let entry):
             _title = State(initialValue: entry.title)

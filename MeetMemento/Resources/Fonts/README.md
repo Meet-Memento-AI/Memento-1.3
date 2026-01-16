@@ -4,9 +4,10 @@ This directory contains custom font files for the MeetMemento app.
 
 ## Installed Fonts
 
-### Recoleta (Headings) ✅
-- **Recoleta-Black.otf** - Highest weight, used for all heading styles (h1, h2, h3, h4)
-- **Recoleta-Bold.otf** - Alternative bold weight (backup)
+### Sora (Headings) ✅
+- **Sora-ExtraBold.ttf** - Highest weight, used for all heading styles (h1, h2, h3, h4)
+- **Sora-Bold.ttf** - Alternative bold weight
+- **Sora-SemiBold.ttf** - Secondary weight for smaller headings
 - Used for: titleS (20px), titleM (24px), displayL (32px), displayXL (40px)
 
 ### Manrope (Body Text) ✅
@@ -37,7 +38,8 @@ This directory contains custom font files for the MeetMemento app.
 ## Font PostScript Names
 
 The Typography.swift system uses these PostScript names:
-- `Recoleta-Black` (for H1, H2, H3, H4 - sizes 40px, 32px, 24px, 20px)
+- `Sora-ExtraBold` (for H1, H2, H5 - sizes 40px, 32px, 16px)
+- `Sora-SemiBold` (for H3, H4 - sizes 24px, 20px)
 - `Manrope-Regular` (for body text)
 - `Manrope-Medium` (for labels, buttons, medium weight text)
 - `Manrope-Bold` (for bold variants - bodyBold, labelBold, etc.)

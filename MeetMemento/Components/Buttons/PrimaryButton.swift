@@ -35,12 +35,7 @@ public struct PrimaryButton: View {
             .frame(maxWidth: .infinity)
             .foregroundStyle(theme.primaryForeground)
             .background(theme.primary)
-            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: theme.radius.lg)
-                    .stroke(theme.ring.opacity(0.15), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.xl, style: .continuous))
         }
         .buttonStyle(.plain)
     }

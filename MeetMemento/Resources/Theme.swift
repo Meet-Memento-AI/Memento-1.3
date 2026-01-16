@@ -77,6 +77,8 @@ struct Theme {
     struct Weights {
         let normal: Font.Weight = .regular
         let medium: Font.Weight = .medium
+        let semibold: Font.Weight = .semibold
+        let bold: Font.Weight = .bold
     }
     let weights = Weights()
 
@@ -120,7 +122,7 @@ struct Theme {
     let fabGradientStart: Color
     let fabGradientEnd: Color
 
-    // Header text gradient (for H1, H2, H3 in Recoleta)
+    // Header text gradient (for H1, H2, H3 in Sora)
     let headerGradientStart: Color
     let headerGradientEnd: Color
 

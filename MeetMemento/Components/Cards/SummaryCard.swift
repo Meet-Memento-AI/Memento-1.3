@@ -83,14 +83,14 @@ private struct HeaderLabel: View {
     }
 }
 
-// MARK: - Page (H3 using RecoletaAlt-SemiBold with line height of 1)
+// MARK: - Page (H3 using Sora-SemiBold with line height of 1)
 
 private struct InsightPage: View {
     let text: String
 
     var body: some View {
         Text(text)
-            .font(.custom("RecoletaAlt-SemiBold", size: 24, relativeTo: .title))
+            .font(.custom("Sora-SemiBold", size: 24, relativeTo: .title))
             .lineSpacing(0) // Line height of 1 (no extra spacing)
             .foregroundStyle(.white)
             .multilineTextAlignment(.leading)
@@ -133,7 +133,7 @@ private struct ProgressSegments: View {
         }
         .padding(.vertical, 24)
     }
-    // To render Recoleta **SemiBold** for all headings inside:
+    // To render Sora **SemiBold** for all headings inside:
     .useTypography(Typography(headingWeight: .semibold))
     .useTheme()
     .background(Color(.systemGroupedBackground))

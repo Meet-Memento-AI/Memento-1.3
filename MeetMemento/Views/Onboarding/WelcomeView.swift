@@ -17,51 +17,108 @@ public struct WelcomeView: View {
     @State private var showCreateAccountSheet = false
     @State private var showSignInSheet = false
     @State private var showOnboardingFlow = false
+    @State private var carouselPage = 0
 
     public init(onNext: (() -> Void)? = nil) {
         self.onNext = onNext
     }
 
     public var body: some View {
+        let isDarkBackground = carouselPage == 1
+
         NavigationStack {
             VStack(spacing: 12) {
-                Spacer()
 
-                // App logo
-                Image("LaunchLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 64, height: 64)
+                // Centered Carousel
+                VStack(spacing: 32) {
+                    TabView(selection: $carouselPage) {
+                        // Page 0: Stacked Cards
+                        VStack(spacing: 0) {
+                            carouselHeader(
+                                title: carouselItems[0].title,
+                                description: carouselItems[0].description,
+                                isDark: isDarkBackground
+                            )
+                            OnboardingStackedCards()
+                        }
+                        .tag(0)
 
-                // Headline
-                Text("MeetMemento")
-                    .font(type.h1)
-                    .headerGradient()
+                        // Page 1: Sentiment Analysis
+                        VStack(spacing: 0) {
+                            carouselHeader(
+                                title: carouselItems[1].title,
+                                description: carouselItems[1].description,
+                                isDark: isDarkBackground
+                            )
+                            OnboardingSentimentCard()
+                        }
+                        .tag(1)
 
-                // Description
-                Text("Your AI journaling partner.")
-                    .font(type.body)
-                    .foregroundStyle(theme.mutedForeground)
-                    .multilineTextAlignment(.center)
+                        // Page 2: Value Banner
+                        VStack(spacing: 0) {
+                            carouselHeader(
+                                title: carouselItems[2].title,
+                                description: carouselItems[2].description,
+                                isDark: isDarkBackground
+                            )
+                            OnboardingValueBanner()
+                                .padding(.top, 16)
+                        }
+                        .tag(2)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(height: 520)
+                    .padding(.horizontal, -16) // Extend to edges, counteract parent padding
+
+                    // Custom Page Indicator
+                    HStack(spacing: 8) {
+                        ForEach(0..<carouselItems.count, id: \.self) { index in
+                            Circle()
+                                .fill(carouselPage == index 
+                                      ? (isDarkBackground ? .white : theme.primary) 
+                                      : (isDarkBackground ? .white.opacity(0.2) : theme.primary.opacity(0.2)))
+                                .frame(width: 8, height: 8)
+                                .animation(.spring(), value: carouselPage)
+                        }
+                    }
+                }
 
                 Spacer()
 
                 // Authentication buttons
                 VStack(spacing: 16) {
-                    // Sign In button
+                    // Sign In button - bypasses to main app for testing
                     PrimaryButton(title: "Sign In") {
-                        showSignInSheet = true
+                        authViewModel.bypassToMainApp()
                     }
 
                     // Create Account button
-                    SecondaryButton(title: "Create Account") {
+                    SecondaryButton(
+                        title: "Create Account",
+                        customColor: isDarkBackground ? .white : nil
+                    ) {
                         showCreateAccountSheet = true
                     }
                 }
-                .padding(.horizontal, 16)
             }
             .padding()
-            .background(theme.background.ignoresSafeArea())
+            .background(
+                ZStack {
+                    if isDarkBackground {
+                        LinearGradient(
+                            colors: [PrimaryScale.primary900, PrimaryScale.primary700],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .transition(.opacity)
+                    } else {
+                        theme.background
+                            .transition(.opacity)
+                    }
+                }
+                .ignoresSafeArea()
+            )
+            .animation(.easeInOut(duration: 0.6), value: carouselPage)
         }
         .onAppear {
             checkAndShowOnboarding()
@@ -101,6 +158,36 @@ public struct WelcomeView: View {
         // Stub: In boilerplate, auth is always true, onboarding always complete
         // This is kept for structure
     }
+
+    @ViewBuilder
+    private func carouselHeader(title: String, description: String, isDark: Bool) -> some View {
+        VStack(spacing: 12) {
+            Text(title)
+                .font(type.h2)
+                .foregroundStyle(isDark ? .white : theme.foreground)
+                .multilineTextAlignment(.center)
+
+            Text(description)
+                .font(type.body)
+                .foregroundStyle(isDark ? .white.opacity(0.8) : theme.mutedForeground)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+        }
+        .padding(.bottom, 16)
+    }
+
+    private let carouselItems = [
+        CarouselItem(title: "Journal safely and securely", description: "Write or voice your journal entires."),
+        CarouselItem(title: "Reflect with AI", description: "Get personalized insights and identify patterns in your thoughts."),
+        CarouselItem(title: "Track Your Growth", description: "Visualize your emotional journey and personal evolution over time.")
+    ]
+    
+}
+
+private struct CarouselItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let description: String
 }
 
 // MARK: - Previews

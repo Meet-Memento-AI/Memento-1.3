@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// AI Summary section for Insights view
-/// Displays a title (max 4 lines, Recoleta h3) and body paragraph (max 300 words)
+/// Displays a title (max 4 lines, Sora h3) and body paragraph (max 300 words)
 public struct AISummarySection: View {
     public let title: String
     public let bodyText: String
@@ -28,7 +28,7 @@ public struct AISummarySection: View {
 
             // Main content
             VStack(alignment: .leading, spacing: 24) {
-                // Title (max 4 lines, Recoleta h3)
+                // Title (max 4 lines, Sora h3)
                 Text(title)
                     .font(type.h2)
                     .foregroundStyle(.white)

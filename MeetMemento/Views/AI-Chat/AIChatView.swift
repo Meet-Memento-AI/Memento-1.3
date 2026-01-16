@@ -42,6 +42,9 @@ public struct AIChatView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .background(SwipeBackEnabler())
+        .onTapGesture {
+            dismissKeyboard()
+        }
         .onAppear {
             loadInitialState()
         }
@@ -58,7 +61,7 @@ public struct AIChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    if messages.isEmpty {
+                    if messages.isEmpty && !isSending {
                         ChatEmptyState()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(.top, 160)
@@ -76,33 +79,58 @@ public struct AIChatView: View {
                             )
                             .id(message.id)
                         }
+                        
+                        // Loading State Indicator
+                        if isSending {
+                            AILoadingState()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .transition(.opacity)
+                                .id("loading-state")
+                        }
                     }
                 }
+                // ... (padding attributes remain the same)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
                 .padding(.top, 100) // Clear the header height (Safe area + 44 + gradient)
             }
             .onChange(of: messages.count) { oldCount, newCount in
-                // Auto-scroll to bottom when new message arrives
-                if newCount > oldCount, let lastMessage = messages.last {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                    }
+                scrollToBottom(proxy: proxy, count: newCount)
+            }
+            .onChange(of: isSending) { _, newValue in
+                if newValue {
+                     // Scroll to bottom when loading starts
+                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                         withAnimation {
+                             proxy.scrollTo("loading-state", anchor: .bottom)
+                         }
+                     }
                 }
             }
         }
     }
     
-    // MARK: - Journal Review Indicator
-    
-    private var journalReviewIndicator: some View {
-        JournalReviewIndicator(reviewedCount: reviewedJournalCount)
+    private func scrollToBottom(proxy: ScrollViewProxy, count: Int) {
+         if let lastMessage = messages.last {
+             withAnimation(.easeOut(duration: 0.3)) {
+                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
+             }
+         }
     }
-    
+
+    // ... (skipping JournalReviewIndicator as it is unchanged)
+
     // MARK: - Input Area
     
     private var inputArea: some View {
         VStack(spacing: 0) {
+            // Gradient Overlay
+            LinearGradient(
+                colors: [theme.background.opacity(0), theme.background],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 20)
             
             // Input container
             ChatInputField(
@@ -110,6 +138,7 @@ public struct AIChatView: View {
                 isSending: isSending,
                 onSend: sendMessage
             )
+            .background(theme.background)
         }
     }
     
@@ -138,35 +167,49 @@ public struct AIChatView: View {
         isInputFocused = false
         
         // Simulate AI response (remove when backend is ready)
-        isSending = true
+        withAnimation {
+            isSending = true
+        }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
         // Simulate delay for AI response
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 seconds
             
             await MainActor.run {
                 // Mock AI response with structured content (replace with actual API call)
-                // Example: AI response with headings, body, and citations
                 let mockCitations: [JournalCitation]? = [
                     JournalCitation(
                         entryId: UUID(),
-                        entryTitle: "Morning Thoughts",
+                        entryTitle: "Reflection on Balance",
                         entryDate: Date().addingTimeInterval(-86400 * 2),
-                        excerpt: "Work has been stressful this week. I've been feeling overwhelmed with deadlines and meetings."
+                        excerpt: "I notice that when I take time to pause in the morning, my entire day feels more structured and less chaotic."
+                    ),
+                    JournalCitation(
+                        entryId: UUID(),
+                        entryTitle: "Work Stress",
+                        entryDate: Date().addingTimeInterval(-86400 * 5),
+                        excerpt: "Deadlines are piling up and I feel the pressure mounting. Need to find a way to disconnect."
                     )
                 ]
                 
                 let aiResponse = ChatMessage.aiMessage(
-                    heading1: "Understanding Your Patterns",
-                    heading2: "Key Insights",
-                    body: "Based on your journal entries, I've noticed several patterns. **Work-related stress** appears frequently, especially around deadlines. You've also mentioned *feeling more balanced* after taking walks.",
+                    heading1: "Patterns in Your Resilience",
+                    heading2: "Key Observations",
+                    body: "I've analyzed your recent journal entries and found some interesting connections. **Mindfulness seems to be a key driver** for your productivity.\n\nWhen you mention *taking morning pauses*, your subsequent entries tend to be more positive and focused. Conversely, days without this routine often correlate with higher reported stress levels regarding deadlines.\n\nHere is a breakdown of what I found:\n1. **Morning Routine**: Highly effective for mood regulation.\n2. **Workload Management**: Needs more separation from personal time.\n\nConsider trying to maintain that morning pause even on successful days.",
                     citations: mockCitations
                 )
-                messages.append(aiResponse)
-                isSending = false
+                
+                withAnimation {
+                    isSending = false
+                    messages.append(aiResponse)
+                }
             }
         }
+    }
+    
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -213,5 +256,9 @@ private struct SwipeBackEnabler: UIViewControllerRepresentable {
             uiViewController.navigationController?.interactivePopGestureRecognizer?.delegate = nil
             uiViewController.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         }
+    }
+    
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }

@@ -7,15 +7,18 @@ public struct SecondaryButton: View {
     let title: String
     var systemImage: String? = nil
     var isLoading: Bool = false
+    var customColor: Color? = nil
     var action: () -> Void
 
     public init(title: String,
                 systemImage: String? = nil,
                 isLoading: Bool = false,
+                customColor: Color? = nil,
                 action: @escaping () -> Void) {
         self.title = title
         self.systemImage = systemImage
         self.isLoading = isLoading
+        self.customColor = customColor
         self.action = action
     }
 
@@ -28,17 +31,17 @@ public struct SecondaryButton: View {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title)
                     .font(type.button)
-                if isLoading { ProgressView().tint(PrimaryScale.primary600) }
+                if isLoading { ProgressView().tint(customColor ?? PrimaryScale.primary600) }
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity)
-            .foregroundStyle(PrimaryScale.primary600)
+            .foregroundStyle(customColor ?? PrimaryScale.primary600)
             .background(Color.clear) // Transparent background
-            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.xl, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous)
-                    .stroke(PrimaryScale.primary600, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: theme.radius.xl, style: .continuous)
+                    .stroke(customColor ?? PrimaryScale.primary600, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)

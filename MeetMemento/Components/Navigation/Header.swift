@@ -147,6 +147,21 @@ public struct Header: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.top, topPadding)
         .padding(.bottom, bottomPadding)
+        .background(
+            LinearGradient(
+                gradient: Gradient(stops: [
+                    .init(color: PrimaryScale.primary900, location: 0.0),
+                    .init(color: PrimaryScale.primary900, location: 0.55),
+                    .init(color: PrimaryScale.primary900.opacity(0), location: 1.0)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .padding(.top, -60) // Extend up into safe area
+            .padding(.bottom, -20) // Extend down slightly
+            .opacity(selectionValue == .digDeeper ? 1 : 0)
+            .animation(.easeInOut(duration: 0.35), value: selectionValue)
+        )
     }
 
     // Helper to safely unwrap selection binding

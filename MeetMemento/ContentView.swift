@@ -12,6 +12,7 @@ import SwiftUI
 // MARK: - Navigation routes for journal entry editor
 public enum EntryRoute: Hashable {
     case create
+    case createWithTitle(String)
     case edit(Entry)
 }
 
@@ -71,6 +72,11 @@ public struct ContentView: View {
                 switch route {
                 case .create:
                     AddEntryView(state: .create) { title, text in
+                        entryViewModel.createEntry(title: title, text: text)
+                        navigationPath.removeLast()
+                    }
+                case .createWithTitle(let prefillTitle):
+                    AddEntryView(state: .createWithTitle(prefillTitle)) { title, text in
                         entryViewModel.createEntry(title: title, text: text)
                         navigationPath.removeLast()
                     }

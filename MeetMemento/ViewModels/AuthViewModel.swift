@@ -21,9 +21,16 @@ enum AuthState: Equatable {
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var isAuthenticated = true
-    @Published var hasCompletedOnboarding = true
-    @Published var authState: AuthState = .authenticated(needsOnboarding: false)
+    @Published var isAuthenticated = false
+    @Published var hasCompletedOnboarding = false
+    @Published var authState: AuthState = .unauthenticated
+
+    /// For testing: bypass auth and onboarding, go straight to main app
+    func bypassToMainApp() {
+        isAuthenticated = true
+        hasCompletedOnboarding = true
+        authState = .authenticated(needsOnboarding: false)
+    }
 
     // Pending profile from Apple Sign In (stub)
     var pendingFirstName: String?

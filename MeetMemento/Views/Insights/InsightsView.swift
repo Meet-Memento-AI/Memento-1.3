@@ -12,14 +12,20 @@ public struct InsightsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
+    let onNavigateToEntry: (EntryRoute) -> Void
+
     @State private var loadingStep = 0
     @State private var isShowingHeadlineSkeleton = true
     @State private var displayedHeadline = ""
-    private let fullHeadline = "Your emotional landscape reveals a blend of reflection, frustration, and growth that you’re working towards during this difficult transition period"
+    @State private var hasAnimated = false
+
+    private let fullHeadline = "Your emotional landscape reveals a blend of reflection, frustration, and growth that you're working towards during this difficult transition period"
     private let fullObservation = "You've been processing heavy emotions around work, identity, and control, yet your tone has steadily shifted toward acceptance and purpose. Despite moments of doubt, there's an emerging sense that you're on the right path forward"
     private let totalSteps = 5 // Tag, Observation, Sentiments, Keywords, Questions
 
-    public init() {}
+    public init(onNavigateToEntry: @escaping (EntryRoute) -> Void = { _ in }) {
+        self.onNavigateToEntry = onNavigateToEntry
+    }
 
     public var body: some View {
         Group {
@@ -35,10 +41,20 @@ public struct InsightsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
-        .ignoresSafeArea()
         .onAppear {
-            startLoadingSequence()
+            if !hasAnimated {
+                startLoadingSequence()
+            } else {
+                showInstantContent()
+            }
         }
+    }
+
+    private func showInstantContent() {
+        isShowingHeadlineSkeleton = false
+        displayedHeadline = fullHeadline
+        loadingStep = totalSteps
+        hasAnimated = true
     }
 
     private func startLoadingSequence() {
@@ -77,6 +93,9 @@ public struct InsightsView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.6) {
                 withAnimation(.easeInOut(duration: 1.2)) {
                     loadingStep = i
+                    if i == totalSteps {
+                        hasAnimated = true
+                    }
                 }
             }
         }
@@ -85,7 +104,7 @@ public struct InsightsView: View {
     /// Placeholder content when entries exist
     private var placeholderContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) { // Standardized spacing
+            VStack(alignment: .leading, spacing: 32) { // Standardized spacing
                 
                 // Group 1: The Lead (Heading + Tag)
                 VStack(alignment: .leading, spacing: 16) {
@@ -129,7 +148,6 @@ public struct InsightsView: View {
                     .opacity(loadingStep > 1 ? 1 : 0)
                     .scaleEffect(loadingStep > 1 ? 1 : 0.99)
                     .animation(.easeInOut(duration: 1.5), value: loadingStep)
-                    .padding(.vertical, 8)
 
                 // Group 3: Emotion Deep Dive
                 VStack(alignment: .leading, spacing: 20) {
@@ -137,7 +155,7 @@ public struct InsightsView: View {
                         emotionLabels: ["Anxiety", "Anticipation", "Fear", "Regret"],
                         emotionValues: [50, 20, 18, 12]
                     )
-                    
+
                     Text("Your processing of heavy emotions around work and identity has shifted toward acceptance and purpose.")
                         .font(type.body)
                         .foregroundStyle(.white.opacity(0.6))
@@ -170,8 +188,8 @@ public struct InsightsView: View {
                         "How does your past shape the way you see your future?",
                         "What are you afraid to admit to yourself?"
                     ],
-                    onQuestionTap: { index, question in
-                        print("Follow-up question \(index + 1) tapped: \(question)")
+                    onQuestionTap: { _, question in
+                        onNavigateToEntry(.createWithTitle(question))
                     }
                 )
                 .padding(.top, 10)
@@ -182,8 +200,22 @@ public struct InsightsView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 108)
-            .padding(.bottom, 60)
+            .padding(.bottom, 100)
         }
+        .scrollIndicators(.hidden)
+        .refreshable {
+            // Re-fetch data and reset animation sequence
+            await entryViewModel.refreshEntries()
+            resetAnimation()
+            startLoadingSequence()
+        }
+    }
+
+    private func resetAnimation() {
+        loadingStep = 0
+        isShowingHeadlineSkeleton = true
+        displayedHeadline = ""
+        hasAnimated = false
     }
 
     /// Reusable empty state view

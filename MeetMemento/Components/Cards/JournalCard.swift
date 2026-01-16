@@ -71,7 +71,7 @@ struct JournalCard: View {
     // MARK: - Subviews
     private var header: some View {
         Text(title)
-            .font(type.h4) // Recoleta heading font for prominence
+            .font(type.h4) // Sora heading font for prominence
             .foregroundStyle(theme.foreground)
             .lineLimit(2)
             .multilineTextAlignment(.leading)

@@ -26,6 +26,11 @@ public struct ChatEmptyState: View {
                 .font(type.h3)
                 .foregroundStyle(GrayScale.gray900)
                 .multilineTextAlignment(.center)
+            
+            Text("Let Memento help you introspect.")
+                .font(type.body)
+                .foregroundStyle(GrayScale.gray600)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

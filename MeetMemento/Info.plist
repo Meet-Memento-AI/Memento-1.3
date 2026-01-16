@@ -4,8 +4,15 @@
 <dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Recoleta-Black.otf</string>
-		<string>Recoleta-SemiBold.otf</string>
+		<string>Lora-Regular.ttf</string>
+		<string>Lora-Medium.ttf</string>
+		<string>Lora-SemiBold.ttf</string>
+		<string>Lora-Bold.ttf</string>
+		<string>Sora-Regular.ttf</string>
+		<string>Sora-Medium.ttf</string>
+		<string>Sora-SemiBold.ttf</string>
+		<string>Sora-Bold.ttf</string>
+		<string>Sora-ExtraBold.ttf</string>
 		<string>Manrope-Regular.ttf</string>
 		<string>Manrope-Medium.ttf</string>
 		<string>Manrope-Bold.ttf</string>

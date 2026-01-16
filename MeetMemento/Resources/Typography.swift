@@ -1,8 +1,8 @@
 import SwiftUI
 
 // MARK: - Typography
-// Supports dynamic font weight control for headings (Recoleta Black / SemiBold)
-// and body text (Manrope Regular / Medium / Bold).
+// Supports dynamic font weight control for headings (Lora SemiBold for major headings, 
+// Sora SemiBold for others) and body text (Manrope Regular / Medium / Bold).
 
 public struct Typography {
     // Spec sizes
@@ -20,8 +20,8 @@ public struct Typography {
     public let weightMedium: Font.Weight
 
     // MARK: - Font family names
-    private let headingFontNameBlack = "Recoleta-Black"
-    private let headingFontNameSemiBold = "RecoletaAlt-SemiBold"
+    private let primaryHeadingFont = "Lora-SemiBold"
+    private let secondaryHeadingFont = "Sora-SemiBold"
     private let bodyFontName = "Manrope-Medium"
     private let bodyMediumFontName = "Manrope-Medium"
     private let bodyBoldFontName = "Manrope-Bold"
@@ -41,7 +41,7 @@ public struct Typography {
         displayXL: CGFloat = 40,
         weightNormal: Font.Weight = .regular,
         weightMedium: Font.Weight = .medium,
-        headingWeight: Font.Weight = .black // default Recoleta-Black
+        headingWeight: Font.Weight = .black // default Sora-ExtraBold
     ) {
         self.micro = micro
         self.caption = caption
@@ -65,13 +65,8 @@ public struct Typography {
     public var bodyLineSpacing: CGFloat { 6 }
 
     // MARK: - Font helpers
-    private func headingFont(size: CGFloat) -> Font {
-        // Dynamically pick Recoleta Black or SemiBold based on headingWeight
-        let name = (headingWeight == .semibold)
-            ? headingFontNameSemiBold
-            : headingFontNameBlack
-
-        // Don't apply .weight() modifier to custom fonts - the font file itself defines the weight
+    private func headingFont(size: CGFloat, isPrimary: Bool = true) -> Font {
+        let name = isPrimary ? primaryHeadingFont : secondaryHeadingFont
         return Font.custom(name, size: size, relativeTo: .title)
     }
 
@@ -87,14 +82,15 @@ public struct Typography {
     }
 
     // MARK: - Semantic Fonts
-    public var h1: Font { headingFont(size: displayXL) }
-    public var h2: Font { headingFont(size: displayL) }
-    public var h3: Font { Font.custom(headingFontNameSemiBold, size: titleM, relativeTo: .title) }
-    public var h4: Font { Font.custom(headingFontNameSemiBold, size: titleS, relativeTo: .title) }
-    public var h5: Font { headingFont(size: titleXS) }
+    public var h1: Font { headingFont(size: displayXL, isPrimary: true) }
+    public var h2: Font { headingFont(size: displayL, isPrimary: true) }
+    public var h3: Font { headingFont(size: titleM, isPrimary: false) }
+    public var h4: Font { headingFont(size: titleS, isPrimary: false) }
+    public var h5: Font { headingFont(size: titleXS, isPrimary: false) }
     public var h6: Font { bodyFont(size: titleXS, weight: .bold) }
 
     public var body: Font { bodyFont(size: bodyL, weight: weightNormal) }
+    public var bodyMedium: Font { bodyFont(size: bodyL, weight: .medium) }
     public var bodyBold: Font { bodyFont(size: bodyL, weight: .bold) }
     public var bodySmall: Font { bodyFont(size: bodyS, weight: weightNormal) }
     public var bodySmallBold: Font { bodyFont(size: bodyS, weight: .bold) }

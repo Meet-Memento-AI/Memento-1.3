@@ -70,9 +70,10 @@ public struct ChatInputField: View {
                                 }
                             }
                             .padding(.leading, 16)
-                            .padding(.trailing, 100) // Space for mic + send button
+                            .padding(.trailing, text.isEmpty ? 100 : 52) // Shrink when mic is hidden
                             .padding(.top, 16)
                             .padding(.bottom, 16)
+                            .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
                     }
                     .transition(.opacity)
                 }
@@ -92,10 +93,14 @@ public struct ChatInputField: View {
                     stopButton
                         .transition(.scale.combined(with: .opacity))
                 } else {
-                    microphoneButton
+                    if text.isEmpty {
+                        microphoneButton
+                            .transition(.scale.combined(with: .opacity))
+                    }
                     sendButton
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
             .padding(.trailing, 8)
             .padding(.bottom, 10) // Align center with single-line text (56/2 - 36/2 = 10)
         }

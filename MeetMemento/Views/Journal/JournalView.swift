@@ -39,7 +39,7 @@ public struct JournalView: View {
                 )
                 .tag(JournalTopTab.yourEntries)
 
-                InsightsView()
+                InsightsView(onNavigateToEntry: onNavigateToEntry)
                     .environmentObject(entryViewModel)
                     .tag(JournalTopTab.digDeeper)
             }
