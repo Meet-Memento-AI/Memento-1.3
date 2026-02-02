@@ -38,6 +38,7 @@ public struct AIOutputComponent: View {
     let content: AIOutputContent
     var animate: Bool
     var onCitationsTapped: (() -> Void)?
+    var onRedo: (() -> Void)?
 
     @Environment(\.typography) private var type
 
@@ -64,11 +65,21 @@ public struct AIOutputComponent: View {
     public init(
         content: AIOutputContent,
         animate: Bool = true,
-        onCitationsTapped: (() -> Void)? = nil
+        onCitationsTapped: (() -> Void)? = nil,
+        onRedo: (() -> Void)? = nil
     ) {
         self.content = content
         self.animate = animate
         self.onCitationsTapped = onCitationsTapped
+        self.onRedo = onRedo
+    }
+
+    /// Full text for copy (heading1 + heading2 + body).
+    private var fullTextForCopy: String {
+        [content.heading1, content.heading2, content.body]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
     }
 
     public var body: some View {
@@ -109,6 +120,51 @@ public struct AIOutputComponent: View {
                     .foregroundStyle(GrayScale.gray700)
                     .lineSpacing(type.bodyLineSpacing)
             }
+
+            // Action bar (copy, thumbs up, thumbs down, re-do) — appears gently after message has finished loading
+            HStack(spacing: 8) {
+                Button {
+                    let text = fullTextForCopy
+                    guard !text.isEmpty else { return }
+                    UIPasteboard.general.string = text
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(GrayScale.gray500)
+                }
+                .accessibilityLabel("Copy")
+
+                Button {
+                    print("Thumbs up")
+                } label: {
+                    Image(systemName: "hand.thumbsup")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(GrayScale.gray500)
+                }
+                .accessibilityLabel("Thumbs up")
+
+                Button {
+                    print("Thumbs down")
+                } label: {
+                    Image(systemName: "hand.thumbsdown")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(GrayScale.gray500)
+                }
+                .accessibilityLabel("Thumbs down")
+
+                Button {
+                    onRedo?()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(GrayScale.gray500)
+                }
+                .accessibilityLabel("Regenerate")
+            }
+            .padding(.top, 8)
+            .opacity(hasAnimated || !animate ? 1 : 0)
+            .animation(.easeOut(duration: 0.28), value: hasAnimated)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear {

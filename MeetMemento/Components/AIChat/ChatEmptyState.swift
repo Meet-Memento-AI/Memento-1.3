@@ -8,31 +8,46 @@
 import SwiftUI
 
 public struct ChatEmptyState: View {
+    var suggestions: [String]?
+    var onSuggestionTap: ((String) -> Void)?
+
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
-    
-    public init() {}
-    
+
+    public init(suggestions: [String]? = nil, onSuggestionTap: ((String) -> Void)? = nil) {
+        self.suggestions = suggestions
+        self.onSuggestionTap = onSuggestionTap
+    }
+
     public var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 20) {
             // Memento Logo from Assets
             Image("LaunchLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 48, height: 48)
-            
+
             // Heading
-            Text("What's on your mind?")
+            Text("Welcome John, let’s dive deeper into your journal")
                 .font(type.h3)
                 .foregroundStyle(GrayScale.gray900)
-                .multilineTextAlignment(.center)
-            
-            Text("Let Memento help you introspect.")
-                .font(type.body1)
-                .foregroundStyle(GrayScale.gray600)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let suggestions = suggestions, !suggestions.isEmpty, onSuggestionTap != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(suggestions, id: \.self) { suggestion in
+                        AISuggestionCard(suggestion: suggestion) {
+                            onSuggestionTap?(suggestion)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(16)
+
     }
 }
 
@@ -53,4 +68,18 @@ public struct ChatEmptyState: View {
         .useTypography()
         .preferredColorScheme(.dark)
         .background(Color.gray.opacity(0.1))
+}
+
+#Preview("Empty State • With suggestions") {
+    ChatEmptyState(
+        suggestions: [
+            "What patterns do you see in my recent entries?",
+            "Summarize my week in one sentence."
+        ],
+        onSuggestionTap: { _ in }
+    )
+    .padding()
+    .useTheme()
+    .useTypography()
+    .background(Color.gray.opacity(0.1))
 }

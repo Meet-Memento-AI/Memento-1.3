@@ -107,7 +107,7 @@ private struct H4Modifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(typography.h4)
-            .lineSpacing(typography.sizeXL * 0.2)
+            .lineSpacing(typography.h4LineSpacing)
     }
 }
 
@@ -116,7 +116,7 @@ private struct H5Modifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(typography.h5)
-            .lineSpacing(typography.sizeLG * 0.2)
+            .lineSpacing(typography.h5LineSpacing)
     }
 }
 

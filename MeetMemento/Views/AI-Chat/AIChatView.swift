@@ -20,6 +20,12 @@ public struct AIChatView: View {
     @State private var showCitationsSheet = false
     @FocusState private var isInputFocused: Bool
 
+    private static let defaultSuggestions: [String] = [
+        "What patterns do you see in my recent entries?",
+        "Summarize my week in one sentence.",
+        "Suggest one intention for next week."
+    ]
+
     public init() {}
     
     public var body: some View {
@@ -30,6 +36,29 @@ public struct AIChatView: View {
             // Input area
             inputArea
         }
+        .background(
+            ZStack(alignment: .bottom) {
+                Color.clear
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                PrimaryScale.primary300.opacity(0.08),
+                                PrimaryScale.primary700.opacity(0.08)
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 250
+                        )
+                    )
+                    .frame(width: 500, height: 500)
+                    .offset(y: 80)
+                    .blur(radius: 100)
+                    .opacity(messages.isEmpty ? 1 : 0)
+                    .animation(.easeOut(duration: 0.35), value: messages.isEmpty)
+            }
+            .ignoresSafeArea()
+        )
         .background(theme.background.ignoresSafeArea())
         .background(SwipeBackEnabler().frame(width: 1, height: 1))
         .navigationBarTitleDisplayMode(.inline)
@@ -67,34 +96,51 @@ public struct AIChatView: View {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     if messages.isEmpty && !isSending {
-                        ChatEmptyState()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding(.top, 160)
-                            .id("empty")
-                    } else {
-                        ForEach(messages) { message in
-                            ChatMessageBubble(
-                                message: message,
-                                onCitationsTapped: {
-                                    if let citations = message.citations, !citations.isEmpty {
-                                        selectedCitations = citations
-                                        showCitationsSheet = true
+                        VStack(alignment: .leading, spacing: 0) {
+                            ChatEmptyState()
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    ForEach(Self.defaultSuggestions, id: \.self) { suggestion in
+                                        AISuggestionCard(suggestion: suggestion) {
+                                            sendMessage(prompt: suggestion)
+                                        }
                                     }
                                 }
-                            )
-                            .id(message.id)
+                                .padding(16)
+
+                            }
+                            .frame(height: 200)
                         }
-                        
-                        // Loading State Indicator
-                        if isSending {
-                            AILoadingState()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .transition(.opacity)
-                                .id("loading-state")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 100)
+                        .id("empty")
+                    } else {
+                        VStack(alignment: .leading, spacing: 16) {
+                            ForEach(messages) { message in
+                                ChatMessageBubble(
+                                    message: message,
+                                    onCitationsTapped: {
+                                        if let citations = message.citations, !citations.isEmpty {
+                                            selectedCitations = citations
+                                            showCitationsSheet = true
+                                        }
+                                    },
+                                    onRedo: message.isFromUser ? nil : { regenerateResponse(for: message.id) }
+                                )
+                                .id(message.id)
+                            }
+
+                            // Loading State Indicator
+                            if isSending {
+                                AILoadingState()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .transition(.opacity)
+                                    .id("loading-state")
+                            }
                         }
+                        .padding(16)
                     }
                 }
-                .padding(.horizontal, 20)
                 .padding(.bottom, 16)
                 .padding(.top, 16) // Standard top padding with native navigation
             }
@@ -128,25 +174,26 @@ public struct AIChatView: View {
     
     private var inputArea: some View {
         VStack(spacing: 0) {
-            // Gradient Overlay
-            LinearGradient(
-                colors: [theme.background.opacity(0), theme.background],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 20)
-            
-            // Input container
             ChatInputField(
                 text: $inputText,
                 isSending: isSending,
-                onSend: sendMessage
+                onSend: { sendMessage() }
             )
-            .background(theme.background)
         }
+        .background(.clear)
     }
     
     // MARK: - Actions
+
+    private func regenerateResponse(for messageId: UUID) {
+        guard let index = messages.firstIndex(where: { $0.id == messageId }), index > 0 else { return }
+        let precedingUserMessage = messages[index - 1]
+        guard precedingUserMessage.isFromUser else { return }
+        let userContent = precedingUserMessage.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !userContent.isEmpty else { return }
+        messages.removeSubrange((index - 1)...index)
+        sendMessage(prompt: userContent)
+    }
     
     private func loadInitialState() {
         // Mock initial messages for UI preview (remove when backend is ready)
@@ -155,27 +202,33 @@ public struct AIChatView: View {
         reviewedJournalCount = 5 // Mock data
     }
     
-    private func sendMessage() {
-        let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty, !isSending else { return }
-        
+    private func sendMessage(prompt: String? = nil) {
+        let text: String
+        if let prompt = prompt {
+            text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard !text.isEmpty, !isSending else { return }
+
         // Add user message
         let userMessage = ChatMessage(
-            content: trimmedText,
+            content: text,
             isFromUser: true
         )
         messages.append(userMessage)
-        
-        // Clear input
-        inputText = ""
-        isInputFocused = false
-        
+
+        if prompt == nil {
+            inputText = ""
+            isInputFocused = false
+        }
+
         // Simulate AI response (remove when backend is ready)
         withAnimation {
             isSending = true
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        
+
         // Simulate delay for AI response
         Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 seconds

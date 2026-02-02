@@ -2,6 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.sebastianmendo.MeetMemento</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>memento</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Lora-Regular.ttf</string>
@@ -26,27 +44,5 @@
 		<key>UILaunchScreen</key>
 		<dict/>
 	</dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-	</dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>MeetMemento needs microphone access to transcribe your journal entries using voice.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>MeetMemento uses speech recognition to convert your voice into text for journal entries.</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.sebastianmendo.MeetMemento</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>memento</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>

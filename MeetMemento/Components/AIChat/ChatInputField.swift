@@ -17,6 +17,9 @@ public struct ChatInputField: View {
 
     @Environment(\.theme) private var theme
     @FocusState private var isFocused: Bool
+    @StateObject private var speechService = SpeechService.shared
+    @State private var showPermissionDenied = false
+    @State private var showSTTError = false
 
     public init(
         text: Binding<String>,
@@ -30,18 +33,14 @@ public struct ChatInputField: View {
         self.onSend = onSend
     }
 
-    @State private var isRecording = false
-    
     // MARK: - Body
 
     public var body: some View {
         ZStack(alignment: .bottomTrailing) {
             // TextField container with white background and fixed 120px min height
-            ZStack(alignment: .center) { // Changed to center for wave alignment
-                
-                if isRecording {
-                    // Voice Wave Animation View
-                    VoiceWaveView()
+            ZStack(alignment: .center) {
+                if speechService.isRecording {
+                    VoiceWaveView(audioLevel: speechService.audioLevel)
                         .frame(height: 24) // Match roughly the line height of text input
                         .padding(.leading, 16)
                         .padding(.trailing, 56)
@@ -88,11 +87,11 @@ public struct ChatInputField: View {
                 RoundedRectangle(cornerRadius: theme.radius.xl, style: .continuous)
                     .stroke(theme.border.opacity(0.2), lineWidth: 0)
             )
-            .animation(.easeInOut(duration: 0.2), value: isRecording)
+            .animation(.easeInOut(duration: 0.2), value: speechService.isRecording)
             
             // Buttons positioned at bottom right
             HStack(spacing: 16) {
-                if isRecording {
+                if speechService.isRecording {
                     stopButton
                         .transition(.scale.combined(with: .opacity))
                 } else {
@@ -109,7 +108,41 @@ public struct ChatInputField: View {
         }
         .allowsHitTesting(isInteractive)
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.vertical, 16)
+        .onChange(of: speechService.isRecording) { oldValue, newValue in
+            if oldValue == true && newValue == false && !speechService.transcribedText.isEmpty {
+                insertTranscribedText(speechService.transcribedText)
+            }
+        }
+        .onChange(of: speechService.transcribedText) { _, newText in
+            if !newText.isEmpty && !speechService.isRecording {
+                insertTranscribedText(newText)
+            }
+        }
+        .alert("Microphone Access Required", isPresented: $showPermissionDenied) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("MeetMemento needs microphone access to transcribe your voice. Enable it in Settings > Privacy > Microphone.")
+        }
+        .alert("Recording Failed", isPresented: $showSTTError) {
+            Button("Try Again") {
+                Task {
+                    do {
+                        try await speechService.startRecording()
+                    } catch {
+                        showSTTError = true
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(speechService.errorMessage ?? "Unable to start recording. Please try again.")
+        }
     }
     
     // MARK: - Microphone Button
@@ -117,8 +150,19 @@ public struct ChatInputField: View {
     private var microphoneButton: some View {
         Button {
             guard isInteractive else { return }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isRecording = true
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Task {
+                do {
+                    try await speechService.startRecording()
+                } catch let error as SpeechService.SpeechError {
+                    if case .permissionDenied = error {
+                        showPermissionDenied = true
+                    } else {
+                        showSTTError = true
+                    }
+                } catch {
+                    showSTTError = true
+                }
             }
         } label: {
             Image(systemName: "mic")
@@ -127,6 +171,9 @@ public struct ChatInputField: View {
                 .frame(width: 36, height: 36)
                 .background(Color.clear)
         }
+        .disabled(speechService.isProcessing)
+        .accessibilityLabel("Start voice input")
+        .accessibilityHint("Double-tap to record your voice")
     }
     
     // MARK: - Stop Button
@@ -134,8 +181,9 @@ public struct ChatInputField: View {
     private var stopButton: some View {
         Button {
             guard isInteractive else { return }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isRecording = false
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Task {
+                await speechService.stopRecording()
             }
         } label: {
             ZStack {
@@ -146,9 +194,11 @@ public struct ChatInputField: View {
             .frame(width: 36, height: 36)
             .background(
                 Circle()
-                    .fill(Color.red) // iOS Red style
+                    .fill(Color.red)
             )
         }
+        .accessibilityLabel("Stop voice input")
+        .accessibilityHint("Double-tap to stop and insert text")
     }
     
     // MARK: - Send Button
@@ -186,30 +236,51 @@ public struct ChatInputField: View {
     private var isSendButtonEnabled: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    private func insertTranscribedText(_ transcribedText: String) {
+        let trimmed = transcribedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if text.isEmpty {
+            text = trimmed
+        } else {
+            text += "\n\n" + trimmed
+        }
+        speechService.transcribedText = ""
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onSend()
+    }
 }
 
-// MARK: - Voice Wave View (Animation)
+// MARK: - Voice Wave View (voice-reactive)
 private struct VoiceWaveView: View {
-    let barCount = 30
-    @State private var isAnimating = false
-    
+    let audioLevel: Float
+    private let barCount = 30
+    private let minHeight: CGFloat = 4
+    private let maxHeight: CGFloat = 20
+    private let barWidth: CGFloat = 4
+    private let barSpacing: CGFloat = 4
+
+    private static func barVariation(for index: Int) -> CGFloat {
+        let seed = sin(CGFloat(index) * 0.7) * 0.5 + 0.5
+        return 0.7 + 0.3 * seed
+    }
+
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: barSpacing) {
             ForEach(0..<barCount, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 2)
                     .fill(GrayScale.gray400)
-                    .frame(width: 4, height: isAnimating ? CGFloat.random(in: 4...20) : 4) // Reduced max height to fit container
-                    .animation(
-                        Animation.easeInOut(duration: Double.random(in: 0.5...1.0))
-                            .repeatForever(autoreverses: true)
-                            .delay(Double.random(in: 0...0.5)),
-                        value: isAnimating
-                    )
+                    .frame(width: barWidth, height: barHeight(for: index))
+                    .animation(.easeOut(duration: 0.12), value: audioLevel)
             }
         }
-        .onAppear {
-            isAnimating = true
-        }
+    }
+
+    private func barHeight(for index: Int) -> CGFloat {
+        let level = CGFloat(audioLevel)
+        let variation = Self.barVariation(for: index)
+        let amplitude = (maxHeight - minHeight) * level * variation
+        return max(minHeight, minHeight + amplitude)
     }
 }
 

@@ -62,8 +62,15 @@ public struct Typography {
     private func lineSpacing(for size: CGFloat) -> CGFloat { max(0, size * 0.5) }
     private func headingLineSpacing(for size: CGFloat) -> CGFloat { max(0, size * 0.2) }
 
-    // Body text line spacing (2px lower than previous 6pt): body1/body2 use 4pt
-    public var bodyLineSpacing: CGFloat { 4 }
+    /// Line spacing for h4 (20pt) — 2px smaller than default heading spacing.
+    public var h4LineSpacing: CGFloat { max(0, headingLineSpacing(for: sizeXL) - 2) }
+    /// Line spacing for h5 (16pt) — 2px smaller than default heading spacing.
+    public var h5LineSpacing: CGFloat { max(0, headingLineSpacing(for: sizeLG) - 2) }
+    /// Line spacing for h6 (16pt) — 2px smaller than default heading spacing.
+    public var h6LineSpacing: CGFloat { max(0, headingLineSpacing(for: sizeLG) - 2) }
+
+    // Body text line spacing for body1/body2 — 2px smaller than previous 4pt
+    public var bodyLineSpacing: CGFloat { 2 }
 
     // MARK: - Font Helpers
     private func headingFont(size: CGFloat) -> Font {
@@ -244,15 +251,15 @@ public extension View {
     }
     func h4(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.h4)
-            .modifier(env.typography.headingLineSpacingModifier(for: env.typography.sizeXL))
+            .lineSpacing(env.typography.h4LineSpacing)
     }
     func h5(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.h5)
-            .modifier(env.typography.headingLineSpacingModifier(for: env.typography.sizeLG))
+            .lineSpacing(env.typography.h5LineSpacing)
     }
     func h6(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.h6)
-            .modifier(env.typography.headingLineSpacingModifier(for: env.typography.sizeLG))
+            .lineSpacing(env.typography.h6LineSpacing)
     }
     func bodyText(_ env: EnvironmentValues) -> some View {
         self.font(env.typography.body1)

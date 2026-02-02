@@ -92,8 +92,6 @@ public struct AddEntryView: View {
                 saveButton
             }
         }
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .overlay(alignment: .bottom) {
             microphoneFAB
                 .padding(.bottom, 32)
@@ -102,11 +100,15 @@ public struct AddEntryView: View {
             setupInitialFocus()
         }
         .onChange(of: speechService.isRecording) { oldValue, newValue in
-            // When recording stops (transitions from true to false), insert the final text
-            if oldValue == true && newValue == false {
-                if !speechService.transcribedText.isEmpty {
-                    insertTranscribedText(speechService.transcribedText)
-                }
+            // When recording stops, insert if we already have final text
+            if oldValue == true && newValue == false && !speechService.transcribedText.isEmpty {
+                insertTranscribedText(speechService.transcribedText)
+            }
+        }
+        .onChange(of: speechService.transcribedText) { _, newText in
+            // Final transcription arrives asynchronously after stop; insert when it appears and we're not recording
+            if !newText.isEmpty && !speechService.isRecording {
+                insertTranscribedText(newText)
             }
         }
         .alert("Microphone Access Required", isPresented: $showPermissionDenied) {
@@ -158,16 +160,16 @@ public struct AddEntryView: View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
                 Text("Write your thoughts...")
-                    .font(.system(size: 17))
-                    .lineSpacing(3.4)
+                    .font(type.body1)
+                    .lineSpacing(type.bodyLineSpacing)
                     .foregroundStyle(theme.mutedForeground.opacity(0.5))
                     .padding(.top, 8)
                     .allowsHitTesting(false)
             }
 
             TextEditor(text: $text)
-                .font(.system(size: 17))
-                .lineSpacing(3.4) // 1.2x line height for readability
+                .font(type.body1)
+                .lineSpacing(type.bodyLineSpacing)
                 .foregroundStyle(theme.foreground)
                 .focused($focusedField, equals: .body)
                 .scrollContentBackground(.hidden)
@@ -199,23 +201,15 @@ public struct AddEntryView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                ZStack {
-                    if speechService.isProcessing {
-                        ProgressView()
-                            .controlSize(.regular)
-                            .tint(.white)
-                    } else {
-                        Image(systemName: speechService.isRecording ? "stop.fill" : "mic.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.white)
-                    }
-                }
+                Image(systemName: speechService.isRecording ? "stop.fill" : "mic.fill")
+                    .font(type.h4)
+                    .foregroundStyle(theme.primaryForeground)
 
                 // Duration timer appears inside button when recording
                 if speechService.isRecording {
                     Text(formatDuration(speechService.currentDuration))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(type.body2Bold)
+                        .foregroundStyle(theme.primaryForeground)
                         .transition(.opacity.combined(with: .scale(scale: 0.8)))
                 }
             }
@@ -225,7 +219,7 @@ public struct AddEntryView: View {
                     .fill(
                         LinearGradient(
                             colors: speechService.isRecording
-                                ? [Color.red.opacity(0.8), Color.red]
+                                ? [theme.destructive.opacity(0.8), theme.destructive]
                                 : [theme.fabGradientStart, theme.fabGradientEnd],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -235,7 +229,6 @@ public struct AddEntryView: View {
             .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: speechService.isRecording)
-        .disabled(speechService.isProcessing)
         .accessibilityLabel(speechService.isRecording ? "Stop recording" : "Start voice recording")
         .accessibilityHint(speechService.isRecording ? "Double-tap to stop and insert text" : "Double-tap to record your voice")
     }
@@ -249,7 +242,7 @@ public struct AddEntryView: View {
                     .tint(theme.primary)
             } else {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(type.body1Bold)
             }
         }
         .disabled(isSaving || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

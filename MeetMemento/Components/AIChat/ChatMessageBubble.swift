@@ -10,16 +10,19 @@ import SwiftUI
 public struct ChatMessageBubble: View {
     let message: ChatMessage
     var onCitationsTapped: (() -> Void)?
-    
+    var onRedo: (() -> Void)?
+
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
-    
+
     public init(
         message: ChatMessage,
-        onCitationsTapped: (() -> Void)? = nil
+        onCitationsTapped: (() -> Void)? = nil,
+        onRedo: (() -> Void)? = nil
     ) {
         self.message = message
         self.onCitationsTapped = onCitationsTapped
+        self.onRedo = onRedo
     }
     
     public var body: some View {
@@ -27,7 +30,7 @@ public struct ChatMessageBubble: View {
             // User messages: right-aligned with bubble background
             HStack(alignment: .top, spacing: 12) {
                 Spacer(minLength: 60)
-                
+
                 VStack(alignment: .trailing, spacing: 4) {
                     messageContent
                         .padding(.horizontal, 16)
@@ -41,8 +44,7 @@ public struct ChatMessageBubble: View {
             messageContent
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-    
+    }    
     // MARK: - Message Content
     
     @ViewBuilder
@@ -50,14 +52,15 @@ public struct ChatMessageBubble: View {
         if message.isFromUser {
             // User messages: plain text
             Text(message.content)
-                .font(type.body2)
+                .font(type.body1)
                 .foregroundStyle(BaseColors.white)
                 .lineSpacing(type.bodyLineSpacing)
         } else if let aiContent = message.aiOutputContent {
             // AI messages with structured content (headings, body, citations)
             AIOutputComponent(
                 content: aiContent,
-                onCitationsTapped: onCitationsTapped
+                onCitationsTapped: onCitationsTapped,
+                onRedo: onRedo
             )
         } else {
             // AI messages: support markdown/rich text (fallback)
