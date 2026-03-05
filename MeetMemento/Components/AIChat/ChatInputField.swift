@@ -14,6 +14,10 @@ public struct ChatInputField: View {
     var onSend: () -> Void
     /// When false, input and all buttons are disabled (e.g. carousel preview in WelcomeView).
     var isInteractive: Bool = true
+    /// When true, shows the journal button to access chat history
+    var hasChatHistory: Bool = false
+    /// Callback when journal button is tapped
+    var onJournalTap: (() -> Void)? = nil
 
     @Environment(\.theme) private var theme
     @FocusState private var isFocused: Bool
@@ -21,34 +25,61 @@ public struct ChatInputField: View {
     @State private var showPermissionDenied = false
     @State private var showSTTError = false
 
+    /// Unique identifier for this view's speech session ownership
+    private let speechOwnerId = "ChatInputField"
+
     public init(
         text: Binding<String>,
         isSending: Bool = false,
         isInteractive: Bool = true,
-        onSend: @escaping () -> Void
+        hasChatHistory: Bool = false,
+        onSend: @escaping () -> Void,
+        onJournalTap: (() -> Void)? = nil
     ) {
         self._text = text
         self.isSending = isSending
         self.isInteractive = isInteractive
+        self.hasChatHistory = hasChatHistory
         self.onSend = onSend
+        self.onJournalTap = onJournalTap
+    }
+
+    // MARK: - Computed Properties
+
+    /// Determines if the journal button should be visible
+    /// Hidden when user is actively typing (focused or has text) for a smoother experience
+    private var shouldShowJournalButton: Bool {
+        hasChatHistory && !isFocused && text.isEmpty
     }
 
     // MARK: - Body
 
     public var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            textInput
-            buttonRow
+        HStack(spacing: 12) {
+            if shouldShowJournalButton {
+                journalButton
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            ZStack(alignment: .bottomTrailing) {
+                textInput
+                buttonRow
+            }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: shouldShowJournalButton)
         .allowsHitTesting(isInteractive)
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .onChange(of: speechService.isRecording) { oldValue, newValue in
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if oldValue == true && newValue == false && !speechService.transcribedText.isEmpty {
                 insertTranscribedText(speechService.transcribedText)
             }
         }
         .onChange(of: speechService.transcribedText) { _, newText in
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if !newText.isEmpty && !speechService.isRecording {
                 insertTranscribedText(newText)
             }
@@ -56,7 +87,8 @@ public struct ChatInputField: View {
         .modifier(SpeechAlertsModifier(
             showPermissionDenied: $showPermissionDenied,
             showSTTError: $showSTTError,
-            speechService: speechService
+            speechService: speechService,
+            ownerId: speechOwnerId
         ))
     }
 
@@ -163,7 +195,7 @@ public struct ChatInputField: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             Task {
                 do {
-                    try await speechService.startRecording()
+                    try await speechService.startRecording(ownerId: speechOwnerId)
                 } catch let error as SpeechService.SpeechError {
                     if case .permissionDenied = error {
                         showPermissionDenied = true
@@ -208,7 +240,38 @@ public struct ChatInputField: View {
         .accessibilityLabel("Stop voice input")
         .accessibilityHint("Double-tap to stop and insert text")
     }
-    
+
+    // MARK: - Journal Button
+
+    private var journalButton: some View {
+        Button {
+            guard isInteractive else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onJournalTap?()
+        } label: {
+            Image(systemName: "text.book.closed")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(theme.mutedForeground)
+                .frame(width: 44, height: 44)
+                .background(journalButtonBackground)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Chat history")
+        .accessibilityHint("Double-tap to view past conversations")
+    }
+
+    @ViewBuilder
+    private var journalButtonBackground: some View {
+        if #available(iOS 26.0, *) {
+            Circle()
+                .fill(Color.white.opacity(0.4))
+                .glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            Circle()
+                .fill(theme.inputBackground)
+        }
+    }
+
     // MARK: - Send Button
     
     private var sendButton: some View {
@@ -255,7 +318,8 @@ public struct ChatInputField: View {
         } else {
             text += "\n\n" + trimmed
         }
-        speechService.transcribedText = ""
+        // Clear transcription buffer and release ownership
+        speechService.clearTranscription()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onSend()
     }
@@ -267,6 +331,7 @@ private struct SpeechAlertsModifier: ViewModifier {
     @Binding var showPermissionDenied: Bool
     @Binding var showSTTError: Bool
     let speechService: SpeechService
+    let ownerId: String
 
     func body(content: Content) -> some View {
         content
@@ -284,7 +349,7 @@ private struct SpeechAlertsModifier: ViewModifier {
                 Button("Try Again") {
                     Task {
                         do {
-                            try await speechService.startRecording()
+                            try await speechService.startRecording(ownerId: ownerId)
                         } catch {
                             showSTTError = true
                         }
@@ -332,9 +397,9 @@ private struct VoiceWaveView: View {
 
 // MARK: - Previews
 
-#Preview("Input Field") {
+#Preview("Input Field - No History") {
     @Previewable @State var text = ""
-    
+
     VStack {
         Spacer()
         ChatInputField(text: $text, onSend: {
@@ -345,9 +410,55 @@ private struct VoiceWaveView: View {
     .useTypography()
 }
 
+#Preview("Input Field - With History") {
+    @Previewable @State var text = ""
+
+    VStack {
+        Spacer()
+        ChatInputField(
+            text: $text,
+            hasChatHistory: true,
+            onSend: {
+                print("Send: \(text)")
+            },
+            onJournalTap: {
+                print("Journal tapped")
+            }
+        )
+    }
+    .useTheme()
+    .useTypography()
+}
+
+#Preview("Input Field - Active Typing") {
+    @Previewable @State var text = "What patterns do you see in my recent entries?"
+
+    VStack {
+        Spacer()
+        Text("Journal button hidden while typing")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 8)
+        // Note: Journal button is hidden when text is not empty or field is focused
+        // This provides a smoother typing experience with full-width input
+        ChatInputField(
+            text: $text,
+            hasChatHistory: true,
+            onSend: {
+                print("Send: \(text)")
+            },
+            onJournalTap: {
+                print("Journal tapped")
+            }
+        )
+    }
+    .useTheme()
+    .useTypography()
+}
+
 #Preview("Input Field Recording") {
     @Previewable @State var text = ""
-    
+
     VStack {
         Spacer()
         // Note: Preview won't auto-trigger recording state unless we expose it,

@@ -82,7 +82,8 @@ public struct LoadingStateView: View {
             startProgressiveLoading()
         } else {
             // Modern fluid entrance
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 withAnimation(.easeIn(duration: 0.4)) {
                     showProgress = true
                 }
@@ -91,7 +92,8 @@ public struct LoadingStateView: View {
         }
 
         // Show tips after 1.5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 showTip = true
             }
@@ -99,7 +101,8 @@ public struct LoadingStateView: View {
         }
 
         // Complete after content loads (simulated with 5 second delay)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
             onComplete?()
         }
     }
@@ -109,14 +112,16 @@ public struct LoadingStateView: View {
         loadingPhase = .authenticating
 
         // Phase 2: Loading data (2-4s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
             withAnimation {
                 loadingPhase = .loadingData
             }
         }
 
         // Phase 3: Almost ready (4s+)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
             withAnimation {
                 loadingPhase = .finalizing
             }

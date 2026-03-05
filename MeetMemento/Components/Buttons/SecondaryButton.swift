@@ -48,7 +48,18 @@ public struct SecondaryButton: View {
                     .stroke(isDarkVariant ? Color.white.opacity(0.3) : Color.clear, lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SecondaryButtonPressStyle())
+    }
+}
+
+// MARK: - Button Press Style
+
+struct SecondaryButtonPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

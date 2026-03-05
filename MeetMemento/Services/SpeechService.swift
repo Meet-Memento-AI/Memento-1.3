@@ -23,6 +23,15 @@ final class SpeechService: ObservableObject {
     /// Real-time audio level 0...1 for voice-reactive UI (e.g. wave visualizer).
     @Published var audioLevel: Float = 0
 
+    /// Tracks consecutive silence duration for auto-stop
+    private var silenceStartTime: Date?
+    private let silenceThreshold: Float = 0.02  // Audio level below this = silence
+    private let silenceTimeout: TimeInterval = 10.0  // Auto-stop after 10s silence
+
+    /// Identifier of the view that initiated the current recording session.
+    /// Used to prevent multiple views from reacting to the same transcription.
+    @Published private(set) var activeSessionOwner: String?
+
     enum AuthorizationStatus {
         case notDetermined, denied, authorized
     }
@@ -84,6 +93,25 @@ final class SpeechService: ObservableObject {
     private func updateAudioLevel(_ rms: Float) {
         smoothedLevel = smoothedLevel * 0.3 + rms * 0.7
         audioLevel = smoothedLevel
+
+        // Silence detection for auto-stop
+        if isRecording {
+            if smoothedLevel < silenceThreshold {
+                // Start tracking silence if not already
+                if silenceStartTime == nil {
+                    silenceStartTime = Date()
+                } else if let start = silenceStartTime,
+                          Date().timeIntervalSince(start) >= silenceTimeout {
+                    // 10 seconds of silence - auto-stop
+                    Task { @MainActor in
+                        await self.stopRecording()
+                    }
+                }
+            } else {
+                // Sound detected - reset silence timer
+                silenceStartTime = nil
+            }
+        }
     }
 
     /// Converts buffer to 16 kHz mono for Speech framework; returns nil on failure.
@@ -209,9 +237,13 @@ final class SpeechService: ObservableObject {
 
     // MARK: - Recording
 
-    func startRecording() async throws {
+    /// Starts a recording session owned by the specified view.
+    /// - Parameter ownerId: Unique identifier for the view starting the recording (e.g., "AddEntryView", "ChatInputField")
+    func startRecording(ownerId: String) async throws {
         errorMessage = nil
         transcribedText = ""
+        activeSessionOwner = ownerId
+        silenceStartTime = nil
 
         // 1. Speech authorization
         let speechAuth = await requestAuthorization()
@@ -291,6 +323,7 @@ final class SpeechService: ObservableObject {
         durationTimer?.invalidate()
         durationTimer = nil
         currentDuration = 0
+        silenceStartTime = nil
 
         recognitionRequest?.endAudio()
         // Do not cancel the task — let it finish so we get the final transcription in the callback
@@ -307,6 +340,21 @@ final class SpeechService: ObservableObject {
         audioLevel = 0
         smoothedLevel = 0
         isRecording = false
+        // Note: activeSessionOwner is intentionally NOT cleared here.
+        // It remains set so the owning view can consume the transcribedText.
+        // It will be cleared when the next recording starts.
         // transcribedText already set in recognition task callback when isFinal; if not, partial may be in transcribedText from last callback
+    }
+
+    /// Checks if the given owner is the active session owner.
+    /// Use this to determine if your view should process the transcription.
+    func isOwner(_ ownerId: String) -> Bool {
+        activeSessionOwner == ownerId
+    }
+
+    /// Clears the transcription and resets ownership after consuming the result.
+    func clearTranscription() {
+        transcribedText = ""
+        activeSessionOwner = nil
     }
 }

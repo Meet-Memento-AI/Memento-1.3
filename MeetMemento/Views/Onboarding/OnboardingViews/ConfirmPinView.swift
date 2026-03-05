@@ -178,28 +178,25 @@ public struct ConfirmPinView: View {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
             showError = true
 
-            // Shake animation
-            withAnimation(.default) {
-                shakeOffset = 10
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.default) {
-                    shakeOffset = -10
-                }
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Shake animation using async/await
+            Task { @MainActor in
                 withAnimation(.default) {
                     shakeOffset = 10
                 }
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                withAnimation(.default) {
+                    shakeOffset = -10
+                }
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                withAnimation(.default) {
+                    shakeOffset = 10
+                }
+                try? await Task.sleep(nanoseconds: 100_000_000)
                 withAnimation(.default) {
                     shakeOffset = 0
                 }
-            }
-
-            // Clear PIN after shake
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                // Clear PIN after shake
+                try? await Task.sleep(nanoseconds: 100_000_000)
                 pin = ""
                 showError = false
             }

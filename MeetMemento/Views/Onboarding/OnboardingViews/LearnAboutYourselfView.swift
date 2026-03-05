@@ -16,7 +16,10 @@ public struct LearnAboutYourselfView: View {
     @EnvironmentObject var onboardingViewModel: OnboardingViewModel
 
     @StateObject private var speechService = SpeechService.shared
-    
+
+    /// Unique identifier for this view's speech session ownership
+    private let speechOwnerId = "LearnAboutYourselfView"
+
     @State private var entryText: String = ""
     @State private var isProcessing: Bool = false
     @State private var showSTTError = false
@@ -84,16 +87,21 @@ public struct LearnAboutYourselfView: View {
         }
         .onAppear {
             // Auto-focus the text editor after a brief delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 isFocused = true
             }
         }
         .onChange(of: speechService.isRecording) { oldValue, newValue in
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if oldValue == true && newValue == false && !speechService.transcribedText.isEmpty {
                 insertTranscribedText(speechService.transcribedText)
             }
         }
         .onChange(of: speechService.transcribedText) { _, newText in
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if !newText.isEmpty && !speechService.isRecording {
                 insertTranscribedText(newText)
             }
@@ -112,7 +120,7 @@ public struct LearnAboutYourselfView: View {
             Button("Try Again") {
                 Task {
                     do {
-                        try await speechService.startRecording()
+                        try await speechService.startRecording(ownerId: speechOwnerId)
                     } catch {
                         showSTTError = true
                     }
@@ -207,7 +215,8 @@ public struct LearnAboutYourselfView: View {
         } else {
             entryText += "\n\n" + trimmed
         }
-        speechService.transcribedText = ""
+        // Clear transcription buffer and release ownership
+        speechService.clearTranscription()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         isFocused = true
     }
@@ -230,7 +239,7 @@ public struct LearnAboutYourselfView: View {
                     await speechService.stopRecording()
                 } else {
                     do {
-                        try await speechService.startRecording()
+                        try await speechService.startRecording(ownerId: speechOwnerId)
                     } catch let error as SpeechService.SpeechError {
                         if case .permissionDenied = error {
                             showPermissionDenied = true

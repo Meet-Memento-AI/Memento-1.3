@@ -107,13 +107,15 @@ struct LoadingView: View {
                 breathingScale = 1.08
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     showAppName = true
                 }
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 withAnimation(.easeIn(duration: 0.4)) {
                     showProgress = true
                 }
@@ -122,7 +124,8 @@ struct LoadingView: View {
         }
 
         // Show tips after 2.5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 showTip = true
             }
@@ -135,14 +138,16 @@ struct LoadingView: View {
         loadingPhase = .authenticating
 
         // Phase 2: Loading data (2-5s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
             withAnimation {
                 loadingPhase = .loadingData
             }
         }
 
         // Phase 3: Almost ready (5s+)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
             withAnimation {
                 loadingPhase = .finalizing
             }
@@ -160,7 +165,8 @@ struct LoadingView: View {
 
     private func enforceMinimumDisplayTime() {
         // Ensure loading view shows for at least 800ms to avoid jarring flashes
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 800_000_000)
             hasMetMinimumDisplayTime = true
         }
     }

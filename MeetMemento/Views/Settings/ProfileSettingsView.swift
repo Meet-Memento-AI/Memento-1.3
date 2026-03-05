@@ -22,11 +22,11 @@ public struct ProfileSettingsView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Spacer(minLength: 16)
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                Spacer(minLength: Spacing.md)
 
                 // Header
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Edit Profile")
                         .font(type.h3)
                         .headerGradient()
@@ -35,13 +35,13 @@ public struct ProfileSettingsView: View {
                         .font(type.body1)
                         .foregroundStyle(theme.mutedForeground)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xs)
 
                 // Form section
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: Spacing.lg) {
                     // First name
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("First name")
                             .font(type.body1)
                             .foregroundStyle(theme.foreground)
@@ -55,7 +55,7 @@ public struct ProfileSettingsView: View {
                     }
 
                     // Last name
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text("Last name")
                             .font(type.body1)
                             .foregroundStyle(theme.foreground)
@@ -82,13 +82,13 @@ public struct ProfileSettingsView: View {
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, Spacing.md)
                         .background(canSave ? theme.primary : theme.mutedForeground.opacity(0.3))
                         .foregroundStyle(.white)
                         .cornerRadius(theme.radius.md)
                     }
                     .disabled(!canSave || isSaving)
-                    .padding(.top, 8)
+                    .padding(.top, Spacing.xs)
 
                     // Success message
                     if showSuccessMessage {
@@ -100,7 +100,7 @@ public struct ProfileSettingsView: View {
                                 .font(type.body2)
                                 .foregroundStyle(.green)
                         }
-                        .padding(12)
+                        .padding(Spacing.sm)
                         .background(Color.green.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: theme.radius.md))
                     }
@@ -109,22 +109,22 @@ public struct ProfileSettingsView: View {
                     if !errorMessage.isEmpty {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(theme.destructive)
                                 .font(.system(size: 14))
                             Text(errorMessage)
                                 .font(type.body2)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(theme.destructive)
                         }
-                        .padding(12)
-                        .background(Color.red.opacity(0.1))
+                        .padding(Spacing.sm)
+                        .background(theme.destructive.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: theme.radius.md))
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.md)
 
-                Spacer(minLength: 40)
+                Spacer(minLength: Spacing.xxxl)
             }
-            .padding(.top, 8)
+            .padding(.top, Spacing.xs)
         }
         .background(theme.background.ignoresSafeArea())
         .navigationTitle("Profile")
@@ -188,7 +188,8 @@ public struct ProfileSettingsView: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
                 // Dismiss after short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
                     dismiss()
                 }
             }

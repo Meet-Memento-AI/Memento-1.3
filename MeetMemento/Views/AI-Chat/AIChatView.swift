@@ -21,6 +21,8 @@ public struct AIChatView: View {
     @State private var reviewedJournalCount: Int = 5 // Mock data
     @State private var selectedCitations: [JournalCitation]? = nil
     @State private var showCitationsSheet = false
+    @State private var showChatHistorySheet = false
+    @State private var chatSessions: [ChatSession] = ChatSession.mockSessions // Mock data for now
     @State private var scrollTask: Task<Void, Never>?
     @State private var scrollProxy: ScrollViewProxy?
     @StateObject private var keyboardObserver = KeyboardObserver()
@@ -91,6 +93,17 @@ public struct AIChatView: View {
             if let citations = selectedCitations {
                 CitationsBottomSheet(citations: citations)
             }
+        }
+        .sheet(isPresented: $showChatHistorySheet) {
+            ChatHistorySheet(
+                sessions: chatSessions,
+                onSessionSelect: { session in
+                    loadSession(session)
+                },
+                onNewChat: {
+                    startNewChat()
+                }
+            )
         }
     }
     
@@ -206,7 +219,13 @@ public struct AIChatView: View {
     // MARK: - Floating Input Area
 
     private var floatingInputArea: some View {
-        ChatInputField(text: $inputText, isSending: isSending, onSend: { sendMessage() })
+        ChatInputField(
+            text: $inputText,
+            isSending: isSending,
+            hasChatHistory: !messages.isEmpty,
+            onSend: { sendMessage() },
+            onJournalTap: { showChatHistorySheet = true }
+        )
     }
 
     // MARK: - Keyboard Padding Calculation
@@ -226,7 +245,8 @@ public struct AIChatView: View {
 
     private func scrollToLatestMessage() {
         guard let proxy = scrollProxy else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
             withAnimation(.easeOut(duration: 0.25)) {
                 if let lastMessage = messages.last {
                     proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -321,6 +341,32 @@ public struct AIChatView: View {
     private func dismissKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
+
+    // MARK: - Chat History Actions
+
+    private func loadSession(_ session: ChatSession) {
+        // TODO: Load actual session messages from backend
+        // For now, show a mock loaded state using the session title (first message)
+        messages = [
+            ChatMessage(
+                content: session.title,
+                isFromUser: true
+            ),
+            ChatMessage.aiMessage(
+                heading1: "Restored Session",
+                heading2: nil,
+                body: "This is a restored conversation from your chat history. The original AI response would appear here.",
+                citations: nil
+            )
+        ]
+    }
+
+    private func startNewChat() {
+        withAnimation {
+            messages = []
+            inputText = ""
+        }
+    }
 }
 
 // MARK: - Previews
@@ -340,6 +386,20 @@ public struct AIChatView: View {
                 // Mock messages for preview
             }
     }
+    .useTheme()
+    .useTypography()
+}
+
+#Preview("Chat History Sheet") {
+    ChatHistorySheet(
+        sessions: ChatSession.mockSessions,
+        onSessionSelect: { session in
+            print("Selected: \(session.title)")
+        },
+        onNewChat: {
+            print("New chat started")
+        }
+    )
     .useTheme()
     .useTypography()
 }

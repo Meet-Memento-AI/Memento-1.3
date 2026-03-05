@@ -17,6 +17,7 @@ struct IconButtonNav: View {
     var foregroundColor: Color? = nil  // nil = use theme.foreground
     var useDarkBackground: Bool = false  // Set true when on dark backgrounds (e.g., Insights)
     var enableHaptic: Bool = false
+    var accessibilityLabel: String? = nil  // Custom label for screen readers
     var onTap: (() -> Void)?
 
     @Environment(\.theme) private var theme
@@ -39,11 +40,11 @@ struct IconButtonNav: View {
                 if isDark {
                     // Dark mode: very subtle transparent glass
                     Circle()
-                        .fill(Color.white.opacity(0.12))
+                        .fill(Color.white.opacity(Spacing.Opacity.fill))
                         .overlay(
                             Circle()
                                 .strokeBorder(
-                                    Color.white.opacity(0.2),
+                                    Color.white.opacity(Spacing.Opacity.overlay),
                                     lineWidth: 0.5
                                 )
                         )
@@ -53,12 +54,12 @@ struct IconButtonNav: View {
                         .fill(.regularMaterial)
                         .overlay(
                             Circle()
-                                .fill(Color.white.opacity(0.8))
+                                .fill(Color.white.opacity(Spacing.Opacity.strong))
                         )
                         .overlay(
                             Circle()
                                 .strokeBorder(
-                                    Color.white.opacity(0.6),
+                                    Color.white.opacity(Spacing.Opacity.disabled),
                                     lineWidth: 0.5
                                 )
                         )
@@ -71,13 +72,14 @@ struct IconButtonNav: View {
             }
             .frame(width: buttonSize, height: buttonSize)
             .shadow(
-                color: .black.opacity(isDark ? 0.3 : 0.1),
+                color: .black.opacity(isDark ? Spacing.Opacity.subtle : Spacing.Opacity.tint),
                 radius: isDark ? 10 : 8,
                 x: 0,
                 y: isDark ? 3 : 2
             )
         }
         .buttonStyle(IconButtonPressStyle())
+        .accessibilityLabel(accessibilityLabel ?? icon)
     }
 }
 

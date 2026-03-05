@@ -41,11 +41,12 @@ struct SettingsRow: View {
         // Only wrap in Button if there's an action (not when used with NavigationLink)
         if let action = action {
             Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 action()
             } label: {
                 rowContent
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
             .disabled(showProgress)
         } else {
             // No button wrapper - used when wrapped in NavigationLink
@@ -54,7 +55,7 @@ struct SettingsRow: View {
     }
 
     private var rowContent: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.sm) {
             // Icon
             Image(systemName: icon)
                 .font(type.h4)
@@ -62,7 +63,7 @@ struct SettingsRow: View {
                 .frame(width: 28, height: 28)
 
             // Title and subtitle
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(title)
                     .font(type.body1Bold)
                     .foregroundStyle(isDestructive ? theme.destructive : theme.foreground)
@@ -88,8 +89,8 @@ struct SettingsRow: View {
                     .foregroundStyle(theme.foreground.opacity(0.3))
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
         .contentShape(Rectangle())
     }
 }

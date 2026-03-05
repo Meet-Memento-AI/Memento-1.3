@@ -22,6 +22,9 @@ public struct AddEntryView: View {
 
     @StateObject private var speechService = SpeechService.shared
 
+    /// Unique identifier for this view's speech session ownership
+    private let speechOwnerId = "AddEntryView"
+
     @State private var title: String
     @State private var text: String
     @State private var isSaving = false
@@ -67,7 +70,7 @@ public struct AddEntryView: View {
     }
 
     private var fabWidth: CGFloat {
-        speechService.isRecording ? 120 : 64
+        speechService.isRecording ? 96 : 48
     }
     
     public var body: some View {
@@ -101,12 +104,16 @@ public struct AddEntryView: View {
         }
         .onChange(of: speechService.isRecording) { oldValue, newValue in
             // When recording stops, insert if we already have final text
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if oldValue == true && newValue == false && !speechService.transcribedText.isEmpty {
                 insertTranscribedText(speechService.transcribedText)
             }
         }
         .onChange(of: speechService.transcribedText) { _, newText in
             // Final transcription arrives asynchronously after stop; insert when it appears and we're not recording
+            // Only process if this view owns the session
+            guard speechService.isOwner(speechOwnerId) else { return }
             if !newText.isEmpty && !speechService.isRecording {
                 insertTranscribedText(newText)
             }
@@ -125,7 +132,7 @@ public struct AddEntryView: View {
             Button("Try Again") {
                 Task {
                     do {
-                        try await speechService.startRecording()
+                        try await speechService.startRecording(ownerId: speechOwnerId)
                     } catch {
                         showSTTError = true
                     }
@@ -187,7 +194,7 @@ public struct AddEntryView: View {
                     await speechService.stopRecording()
                 } else {
                     do {
-                        try await speechService.startRecording()
+                        try await speechService.startRecording(ownerId: speechOwnerId)
                     } catch let error as SpeechService.SpeechError {
                         if case .permissionDenied = error {
                             showPermissionDenied = true
@@ -202,8 +209,8 @@ public struct AddEntryView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: speechService.isRecording ? "stop.fill" : "mic.fill")
-                    .font(type.h4)
-                    .foregroundStyle(theme.primary)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(speechService.isRecording ? Color.red : theme.foreground)
 
                 // Duration timer appears inside button when recording
                 if speechService.isRecording {
@@ -213,7 +220,7 @@ public struct AddEntryView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.8)))
                 }
             }
-            .frame(width: fabWidth, height: 64)
+            .frame(width: fabWidth, height: 48)
             .background(microphoneFABBackground)
             .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
         }
@@ -285,8 +292,8 @@ public struct AddEntryView: View {
             text += "\n\n" + transcribedText
         }
 
-        // Clear transcription buffer
-        speechService.transcribedText = ""
+        // Clear transcription buffer and release ownership
+        speechService.clearTranscription()
 
         // Provide haptic feedback
         UIImpactFeedbackGenerator(style: .light).impactOccurred()

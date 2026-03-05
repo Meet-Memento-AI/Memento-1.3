@@ -13,6 +13,7 @@ public struct AboutSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var showShareSheet = false
     @State private var showCopiedAlert = false
@@ -34,11 +35,11 @@ public struct AboutSettingsView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Spacer(minLength: 16)
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                Spacer(minLength: Spacing.md)
 
                 // Header
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("About")
                         .font(type.h3)
                         .headerGradient()
@@ -47,8 +48,8 @@ public struct AboutSettingsView: View {
                         .font(type.body1)
                         .foregroundStyle(theme.mutedForeground)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xs)
 
                 // App Info Section
                 appInfoSection
@@ -62,9 +63,9 @@ public struct AboutSettingsView: View {
                 // Social Section
                 socialSection
 
-                Spacer(minLength: 40)
+                Spacer(minLength: Spacing.xxxl)
             }
-            .padding(.top, 8)
+            .padding(.top, Spacing.xs)
         }
         .background(theme.background.ignoresSafeArea())
         .navigationTitle("About")
@@ -94,25 +95,25 @@ public struct AboutSettingsView: View {
     // MARK: - Sections
 
     private var appInfoSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("App Information")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(theme.foreground)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xxs)
 
             VStack(spacing: 0) {
                 // Version info (tappable to copy)
                 Button {
                     copyVersionToClipboard()
                 } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: Spacing.sm) {
                         Image(systemName: "info.circle.fill")
                             .font(.system(size: 20))
                             .foregroundStyle(theme.primary)
                             .frame(width: 28, height: 28)
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Spacing.xxs) {
                             Text("Version")
                                 .font(type.body1)
                                 .foregroundStyle(theme.foreground)
@@ -128,24 +129,24 @@ public struct AboutSettingsView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(theme.mutedForeground)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
 
                 Divider()
                     .background(theme.border)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                 // Device info (read-only)
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.sm) {
                     Image(systemName: "iphone")
                         .font(.system(size: 20))
                         .foregroundStyle(theme.primary)
                         .frame(width: 28, height: 28)
 
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Spacing.xxs) {
                         Text("Device")
                             .font(type.body1)
                             .foregroundStyle(theme.foreground)
@@ -157,22 +158,22 @@ public struct AboutSettingsView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
-            .padding(.horizontal, 16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .padding(.horizontal, Spacing.md)
         }
     }
 
     private var supportSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Support")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(theme.foreground)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xxs)
 
             VStack(spacing: 0) {
                 // Contact Support
@@ -186,19 +187,19 @@ public struct AboutSettingsView: View {
                     }
                 )
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
-            .padding(.horizontal, 16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .padding(.horizontal, Spacing.md)
         }
     }
 
     private var legalSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Legal")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(theme.foreground)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xxs)
 
             VStack(spacing: 0) {
                 // Terms of Service
@@ -212,19 +213,19 @@ public struct AboutSettingsView: View {
                     }
                 )
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
-            .padding(.horizontal, 16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .padding(.horizontal, Spacing.md)
         }
     }
 
     private var socialSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Share MeetMemento")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(theme.foreground)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 4)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xxs)
 
             VStack(spacing: 0) {
                 // Rate on App Store
@@ -240,7 +241,7 @@ public struct AboutSettingsView: View {
 
                 Divider()
                     .background(theme.border)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                 // Share App
                 SettingsRow(
@@ -253,9 +254,22 @@ public struct AboutSettingsView: View {
                     }
                 )
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
-            .padding(.horizontal, 16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .padding(.horizontal, Spacing.md)
+        }
+    }
+
+    // MARK: - Glass Card Background
+
+    @ViewBuilder
+    private var sectionCardBackground: some View {
+        if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous)
+                .fill(Color.white.opacity(0.4))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+        } else {
+            colorScheme == .dark ? GrayScale.gray800 : GrayScale.gray100
         }
     }
 

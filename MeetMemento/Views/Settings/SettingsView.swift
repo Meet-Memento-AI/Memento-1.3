@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var entryViewModel: EntryViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
 
@@ -22,7 +23,7 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 // Appearance Section
                 appearanceSection
 
@@ -35,10 +36,10 @@ struct SettingsView: View {
                 // Account Section
                 accountSection
 
-                Spacer(minLength: 40)
+                Spacer(minLength: Spacing.xxxl)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xs)
         }
         .background(theme.background.ignoresSafeArea())
         .navigationTitle("Settings")
@@ -94,12 +95,12 @@ struct SettingsView: View {
     // MARK: - Sections
 
     private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
             Text("Appearance")
                 .font(type.h5)
                 .foregroundStyle(theme.foreground)
-                .padding(.bottom, 4)
+                .padding(.bottom, Spacing.xxs)
 
             // Section content card
             VStack(spacing: 0) {
@@ -112,20 +113,20 @@ struct SettingsView: View {
                         action: nil
                     )
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
         }
     }
 
     private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
             Text("About")
                 .font(type.h5)
                 .foregroundStyle(theme.foreground)
-                .padding(.bottom, 4)
+                .padding(.bottom, Spacing.xxs)
 
             // Section content card
             VStack(spacing: 0) {
@@ -138,20 +139,20 @@ struct SettingsView: View {
                         action: nil
                     )
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
         }
     }
 
     private var dataPrivacySection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
             Text("Data & Privacy")
                 .font(type.h5)
                 .foregroundStyle(theme.foreground)
-                .padding(.bottom, 4)
+                .padding(.bottom, Spacing.xxs)
 
             // Section content card
             VStack(spacing: 0) {
@@ -169,7 +170,7 @@ struct SettingsView: View {
 
                 Divider()
                     .background(theme.border)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                 SettingsRow(
                     icon: "info.circle",
@@ -181,19 +182,19 @@ struct SettingsView: View {
                     }
                 )
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
         }
     }
 
 
     private var accountSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
             Text("Account")
                 .font(type.h5)
                 .foregroundStyle(theme.foreground)
-                .padding(.bottom, 4)
+                .padding(.bottom, Spacing.xxs)
 
             // Section content card
             VStack(spacing: 0) {
@@ -206,11 +207,11 @@ struct SettingsView: View {
                         action: nil
                     )
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
 
                 Divider()
                     .background(theme.border)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                 SettingsRow(
                     icon: "rectangle.portrait.and.arrow.right",
@@ -224,7 +225,7 @@ struct SettingsView: View {
 
                 Divider()
                     .background(theme.border)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                 SettingsRow(
                     icon: "trash.fill",
@@ -237,8 +238,21 @@ struct SettingsView: View {
                     }
                 )
             }
-            .background(BaseColors.white)
-            .cornerRadius(16)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+        }
+    }
+
+    // MARK: - Glass Card Background
+
+    @ViewBuilder
+    private var sectionCardBackground: some View {
+        if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous)
+                .fill(Color.white.opacity(0.4))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+        } else {
+            colorScheme == .dark ? GrayScale.gray800 : GrayScale.gray100
         }
     }
 

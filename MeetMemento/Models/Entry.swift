@@ -2,11 +2,21 @@
 //  Entry.swift
 //  MeetMemento
 //
-//  Simple journal entry model for UI boilerplate.
+//  Lightweight UI-facing journal entry model.
+//  For API/database operations, use JournalEntry (Codable model with full schema).
+//
+//  Entry vs JournalEntry:
+//  - Entry: UI display model with minimal properties (title, text, dates)
+//  - JournalEntry: Full Codable model for Supabase with userId, wordCount, sentiment, etc.
+//
+//  The EntryViewModel handles mapping between these models.
 //
 
 import Foundation
 
+/// Lightweight journal entry model for UI rendering.
+/// This model is used throughout the UI layer for displaying entries.
+/// For API operations, convert to/from JournalEntry via EntryViewModel.
 public struct Entry: Identifiable, Hashable {
     public let id: UUID
     public var title: String
@@ -45,3 +55,8 @@ extension Entry {
         Entry(title: "Evening Reflection", text: "I learned something new today...")
     ]
 }
+
+// MARK: - Type Alias
+
+/// Type alias for clarity - UIEntry is the lightweight UI model
+public typealias UIEntry = Entry

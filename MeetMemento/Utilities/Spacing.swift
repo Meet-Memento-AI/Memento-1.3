@@ -41,20 +41,58 @@ struct Spacing {
 
     /// Standard opacity values for consistent visual hierarchy
     struct Opacity {
-        /// Disabled state (0.6)
-        static let disabled: Double = 0.6
+        // MARK: - Minimal Opacity (0.01-0.08)
 
-        /// Subtle overlays and backgrounds (0.3)
-        static let subtle: Double = 0.3
+        /// Nearly invisible, for hit testing areas (0.01)
+        static let invisible: Double = 0.01
 
-        /// Muted text or UI elements (0.95)
-        static let muted: Double = 0.95
+        /// Very faint background tints (0.04)
+        static let faint: Double = 0.04
+
+        /// Very subtle shadows (0.06)
+        static let shadow: Double = 0.06
+
+        /// Subtle skeleton loading backgrounds (0.08)
+        static let skeleton: Double = 0.08
+
+        // MARK: - Low Opacity (0.1-0.2)
+
+        /// Light background tints (0.1)
+        static let tint: Double = 0.1
+
+        /// Light fill backgrounds (0.12)
+        static let fill: Double = 0.12
 
         /// Border opacity (0.15)
         static let border: Double = 0.15
 
         /// Overlay backgrounds (0.2)
         static let overlay: Double = 0.2
+
+        // MARK: - Medium Opacity (0.3-0.5)
+
+        /// Subtle overlays and backgrounds (0.3)
+        static let subtle: Double = 0.3
+
+        /// Medium prominence (0.4)
+        static let medium: Double = 0.4
+
+        /// Half opacity (0.5)
+        static let half: Double = 0.5
+
+        // MARK: - High Opacity (0.6-0.9)
+
+        /// Disabled state (0.6)
+        static let disabled: Double = 0.6
+
+        /// Prominent but not full (0.8)
+        static let strong: Double = 0.8
+
+        /// Nearly opaque (0.9)
+        static let prominent: Double = 0.9
+
+        /// Muted text or UI elements (0.95)
+        static let muted: Double = 0.95
     }
 
     // MARK: - Animation Durations

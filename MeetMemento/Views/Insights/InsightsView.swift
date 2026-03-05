@@ -282,55 +282,13 @@ public struct InsightsView: View {
     // MARK: - Month Picker Sheet
 
     private var monthPickerSheet: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Month and Year Pickers
-                HStack(spacing: 0) {
-                    // Month Picker
-                    Picker("Month", selection: $selectedMonth) {
-                        ForEach(1...12, id: \.self) { month in
-                            Text(monthNames[month - 1])
-                                .tag(month)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(maxWidth: .infinity)
-
-                    // Year Picker
-                    Picker("Year", selection: $selectedYear) {
-                        ForEach(availableYears, id: \.self) { year in
-                            Text(String(year))
-                                .tag(year)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(maxWidth: .infinity)
-                }
-                .frame(height: 200)
-                .padding(.vertical, 20)
-            }
-            .navigationTitle("Select Month")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        showMonthPicker = false
-                    }
-                    .foregroundStyle(theme.primary)
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        updateSelectedDate()
-                        showMonthPicker = false
-                    }
-                    .foregroundStyle(theme.primary)
-                    .fontWeight(.semibold)
-                }
-            }
-        }
-        .presentationDetents([.height(350)])
-        .presentationDragIndicator(.visible)
+        InsightMonthPickerSheet(
+            selectedMonth: $selectedMonth,
+            selectedYear: $selectedYear,
+            isPresented: $showMonthPicker,
+            availableYears: availableYears,
+            onDone: updateSelectedDate
+        )
         .onAppear {
             // Initialize pickers with current selected date
             selectedMonth = Calendar.current.component(.month, from: selectedDate)
@@ -497,155 +455,28 @@ public struct InsightsView: View {
 
     /// Content when entries exist - displays AI-generated insights
     private var placeholderContent: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 32) { // Standardized spacing
-                    // Group 1: The Lead (Heading + Tag)
-                VStack(alignment: .leading, spacing: 16) {
-                    ZStack(alignment: .topLeading) {
-                        // Reserved space for the full headline to prevent layout jumps/reflow
-                        Text(displayHeadline)
-                            .font(type.h3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.clear)
-                            .accessibilityHidden(true)
-
-                        if isShowingHeadlineSkeleton || isLoadingInsight {
-                            VStack(alignment: .leading, spacing: 12) {
-                                SkeletonView(height: 28)
-                                SkeletonView(width: 200, height: 28)
-                            }
-                        } else {
-                            Text(displayedHeadline)
-                                .font(type.h3)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.white)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .multilineTextAlignment(.leading)
-                        }
-                    }
-
-                    EntriesTag(count: entriesCount > 0 ? entriesCount : entryViewModel.entries.count)
-                        .padding(.top, 8)
-                        .opacity(loadingStep > 0 ? 1 : 0)
-                        .scaleEffect(loadingStep > 0 ? 1 : 0.98)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // Group 2: Core Observation
-                Text(displayObservation)
-                    .font(type.body1)
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineSpacing(6)
-                    .opacity(loadingStep > 1 ? 1 : 0)
-                    .scaleEffect(loadingStep > 1 ? 1 : 0.99)
-
-                // Group 3: Emotion Deep Dive (only show if sentiments available)
-                if !displaySentiments.isEmpty {
-                    VStack(alignment: .leading, spacing: 20) {
-                        SentimentAnalysisCard(
-                            emotionLabels: displaySentiments.map { $0.label },
-                            emotionValues: displaySentiments.map { Double($0.score) }
-                        )
-
-                        if let extendedObservation = displayObservationExtended {
-                            Text(extendedObservation)
-                                .font(type.body1)
-                                .foregroundStyle(.white.opacity(0.6))
-                                .lineSpacing(6)
-                        }
-                    }
-                    .opacity(loadingStep > 2 ? 1 : 0)
-                    .scaleEffect(loadingStep > 2 ? 1 : 0.98)
-                }
-
-                // Group 4: Keyword Landscapes (only show if keywords available)
-                if !displayKeywords.isEmpty {
-                    KeywordsCard(keywords: displayKeywords)
-                        .opacity(loadingStep > 3 ? 1 : 0)
-                        .scaleEffect(loadingStep > 3 ? 1 : 0.98)
-                }
-
-                // Group 5: The Path Forward
-                FollowUpQuestionGroup(
-                    questions: displayQuestions,
-                    onQuestionTap: { _, question in
-                        navigationPath.append(EntryRoute.createWithTitle(question))
-                    }
-                )
-                .padding(.top, 10)
-                .padding(.horizontal, -20)
-                .opacity(loadingStep > 4 ? 1 : 0)
-                .scaleEffect(loadingStep > 4 ? 1 : 0.99)
-
-                // Error message if insight generation failed
-                if let error = insightError {
-                    Text("Unable to generate insights: \(error)")
-                        .font(type.body2)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.top, 16)
-                }
-
-                // Hint when no insight yet and not loading (insight loads only on pull or date change)
-                if insight == nil, !isLoadingInsight, !entryViewModel.entries.isEmpty, entriesForSelectedMonth.isEmpty {
-                    Text("No entries this month. Select another month or pull to refresh.")
-                        .font(type.body2)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.top, 24)
-                } else if insight == nil, !isLoadingInsight {
-                    Text("Pull down to load insights for \(currentMonthDisplay)")
-                        .font(type.body2)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.top, 24)
-                }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 32)
-                .padding(.bottom, 100)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: UIScreen.main.bounds.height)
-                .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: geometry.frame(in: .named("scroll")).minY
-                            )
-                    }
-                )
-            }
-            .coordinateSpace(name: "scroll")
-            .scrollIndicators(.hidden)
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                // Only apply tracking on iOS 18, not iOS 26+
-                if #available(iOS 26.0, *) {
-                    // Native behavior - do nothing
-                } else if let binding = tabBarHidden {
-                    scrollDebouncer.debounce {
-                        self.updateTabBarVisibility(scrollOffset: value, binding: binding)
-                    }
-                }
-            }
-            .refreshable {
-                // Refresh entries, then load insight for current month (from cache or API; no extra API call if cached)
+        InsightsContentView(
+            insight: insight,
+            entriesCount: entriesCount,
+            totalEntries: entryViewModel.entries.count,
+            currentMonthDisplay: currentMonthDisplay,
+            entriesForSelectedMonth: entriesForSelectedMonth,
+            isLoadingInsight: isLoadingInsight,
+            isShowingHeadlineSkeleton: isShowingHeadlineSkeleton,
+            displayedHeadline: displayedHeadline,
+            loadingStep: loadingStep,
+            insightError: insightError,
+            lastScrollOffset: $lastScrollOffset,
+            scrollDebouncer: scrollDebouncer,
+            scrollThreshold: scrollThreshold,
+            onNavigateToEntry: { route in
+                navigationPath.append(route)
+            },
+            onRefresh: {
                 await entryViewModel.refreshEntries()
                 await loadForCurrentMonth()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func updateTabBarVisibility(scrollOffset: CGFloat, binding: Binding<Bool>) {
-        let delta = scrollOffset - lastScrollOffset
-
-        // Scrolling down (negative delta) - hide tab bar
-        if delta < -scrollThreshold && !binding.wrappedValue {
-            binding.wrappedValue = true
-        }
-        // Scrolling up (positive delta) - show tab bar
-        else if delta > scrollThreshold && binding.wrappedValue {
-            binding.wrappedValue = false
-        }
-
-        lastScrollOffset = scrollOffset
+        )
     }
 
     private func resetAnimation() {
@@ -661,26 +492,7 @@ public struct InsightsView: View {
 
     /// Reusable empty state view
     private func emptyState(icon: String, title: String, message: String) -> some View {
-        VStack(spacing: 12) {
-            Spacer()
-
-            Image(systemName: icon)
-                .font(.system(size: 36))
-                .foregroundStyle(.white)
-
-            Text(title)
-                .font(type.h3)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-
-            Text(message)
-                .font(type.body1)
-                .foregroundStyle(.white.opacity(0.8))
-
-            Spacer()
-        }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 16)
+        InsightsEmptyState(icon: icon, title: title, message: message)
     }
 }
 

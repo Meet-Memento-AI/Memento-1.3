@@ -1,8 +1,22 @@
+//
+//  JournalEntry.swift
+//  MeetMemento
+//
+//  Full Codable journal entry model for Supabase API operations.
+//  For UI display, use Entry (lightweight model with minimal properties).
+//
+//  JournalEntry vs Entry:
+//  - JournalEntry: Codable model matching Supabase schema (userId, wordCount, sentiment, etc.)
+//  - Entry: Lightweight UI model with just title, text, and dates
+//
+//  The EntryViewModel handles mapping between these models.
+//
 
 import Foundation
 
-/// Represents a journal entry in the `journal_entries` table.
-/// This is the rich entry model containing sentiment, word counts, and soft-delete flags.
+/// Full journal entry model for API/database operations.
+/// Maps to the `journal_entries` Supabase table with all schema fields.
+/// For UI rendering, convert to Entry via EntryViewModel.
 public struct JournalEntry: Identifiable, Codable, Hashable {
     public let id: UUID
     public let userId: UUID
@@ -68,3 +82,8 @@ extension JournalEntry {
         isDeleted: false
     )
 }
+
+// MARK: - Type Alias
+
+/// Type alias for clarity - APIEntry is the full Codable model for Supabase
+public typealias APIEntry = JournalEntry

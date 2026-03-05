@@ -11,6 +11,7 @@ public struct AppearanceSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedTheme: AppThemePreference = .system
 
@@ -18,11 +19,11 @@ public struct AppearanceSettingsView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Spacer(minLength: 16)
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                Spacer(minLength: Spacing.md)
 
                 // Header
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Appearance")
                         .font(type.h3)
                         .headerGradient()
@@ -31,12 +32,12 @@ public struct AppearanceSettingsView: View {
                         .font(type.body1)
                         .foregroundStyle(theme.mutedForeground)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xs)
 
                 // Theme selector section
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
                         Text("Theme")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(theme.foreground)
@@ -45,15 +46,17 @@ public struct AppearanceSettingsView: View {
                             .font(type.body2)
                             .foregroundStyle(theme.mutedForeground)
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.md)
 
                     // Theme options card
                     VStack(spacing: 0) {
                         ForEach(AppThemePreference.allCases, id: \.self) { themeOption in
                             Button {
-                                selectTheme(themeOption)
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectTheme(themeOption)
+                                }
                             } label: {
-                                HStack(spacing: 16) {
+                                HStack(spacing: Spacing.md) {
                                     // Icon
                                     Image(systemName: iconForTheme(themeOption))
                                         .font(.system(size: 20))
@@ -61,7 +64,7 @@ public struct AppearanceSettingsView: View {
                                         .frame(width: 28, height: 28)
 
                                     // Title and description
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .leading, spacing: Spacing.xxs) {
                                         Text(themeOption.displayName)
                                             .font(type.body1)
                                             .foregroundStyle(theme.foreground)
@@ -84,28 +87,29 @@ public struct AppearanceSettingsView: View {
                                             .foregroundStyle(theme.mutedForeground.opacity(0.3))
                                     }
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 16)
+                                .padding(.horizontal, Spacing.md)
+                                .padding(.vertical, Spacing.md)
+                                .background(selectedTheme == themeOption ? theme.primary.opacity(0.08) : Color.clear)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .buttonStyle(.plain)
 
                             // Divider between options (not after last one)
                             if themeOption != AppThemePreference.allCases.last {
                                 Divider()
                                     .background(theme.border)
-                                    .padding(.horizontal, 16)
+                                    .padding(.horizontal, Spacing.md)
                             }
                         }
                     }
-                    .background(BaseColors.white)
-                    .cornerRadius(16)
+                    .background(sectionCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.md)
 
-                Spacer(minLength: 40)
+                Spacer(minLength: Spacing.xxxl)
             }
-            .padding(.top, 8)
+            .padding(.top, Spacing.xs)
         }
         .background(theme.background.ignoresSafeArea())
         .navigationTitle("Appearance")
@@ -124,6 +128,19 @@ public struct AppearanceSettingsView: View {
         }
         .onAppear {
             loadCurrentTheme()
+        }
+    }
+
+    // MARK: - Glass Card Background
+
+    @ViewBuilder
+    private var sectionCardBackground: some View {
+        if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous)
+                .fill(Color.white.opacity(0.4))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+        } else {
+            colorScheme == .dark ? GrayScale.gray800 : GrayScale.gray100
         }
     }
 

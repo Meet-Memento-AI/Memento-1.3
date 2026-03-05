@@ -109,8 +109,8 @@ public extension InsightDateTag {
 // MARK: - Colors
 
 private extension InsightDateTag {
-    static let purpleBackground = Color(red: 123/255, green: 62/255, blue: 201/255) // #7B3EC9
-    static let lightText = Color(red: 242/255, green: 238/255, blue: 252/255) // #F2EEFC
+    static let purpleBackground = PrimaryScale.primary500  // #7B3EC9
+    static let lightText = PrimaryScale.primary50  // #F2EEFC
 }
 
 // MARK: - Previews

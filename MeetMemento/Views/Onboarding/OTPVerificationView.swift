@@ -101,14 +101,14 @@ public struct OTPVerificationView: View {
                 if !errorMessage.isEmpty {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(theme.destructive)
                             .font(.system(size: 14))
                         Text(errorMessage)
                             .font(type.body2)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(theme.destructive)
                     }
                     .padding(12)
-                    .background(Color.red.opacity(0.1))
+                    .background(theme.destructive.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: theme.radius.md))
                     .padding(.top, 8)
                 }
@@ -226,7 +226,8 @@ public struct OTPVerificationView: View {
                     resendMessage = "✓ Code sent"
 
                     // Clear message after 3 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
                         resendMessage = ""
                     }
                 }
