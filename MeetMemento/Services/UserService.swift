@@ -61,10 +61,71 @@ class UserService {
             
         print("✅ Created new user profile for \(email)")
     }
+
+    /// Ensures user exists with OAuth profile data (Apple/Google Sign In).
+    /// Creates user if missing, optionally updates name if provided for existing users.
+    func ensureUserExistsWithProfile(
+        id: UUID,
+        email: String,
+        fullName: String? = nil,
+        avatarUrl: String? = nil
+    ) async throws {
+        // 1. Check if user exists
+        let existing: [UserProfileDTO] = try await client
+            .from("users")
+            .select()
+            .eq("id", value: id)
+            .execute()
+            .value
+
+        if let existingUser = existing.first {
+            // User exists - optionally update name if provided and currently empty
+            if let fullName = fullName, !fullName.isEmpty,
+               (existingUser.full_name == nil || existingUser.full_name?.isEmpty == true) {
+                try await client
+                    .from("users")
+                    .update(["full_name": fullName, "updated_at": ISO8601DateFormatter().string(from: Date())])
+                    .eq("id", value: id)
+                    .execute()
+                print("✅ Updated user profile name for \(email)")
+            }
+            return
+        }
+
+        // 2. Create new user with OAuth data
+        let newProfileDTO = UserProfileDTO(
+            id: id,
+            email: email,
+            full_name: fullName,
+            avatar_url: avatarUrl,
+            onboarding_completed: false,
+            created_at: ISO8601DateFormatter().string(from: Date()),
+            updated_at: ISO8601DateFormatter().string(from: Date())
+        )
+
+        try await client
+            .from("users")
+            .insert(newProfileDTO)
+            .execute()
+
+        print("✅ Created new OAuth user profile for \(email)")
+    }
+
+    /// Checks if user has completed onboarding
+    func hasCompletedOnboarding(userId: UUID) async throws -> Bool {
+        let result: [UserProfileDTO] = try await client
+            .from("users")
+            .select("onboarding_completed")
+            .eq("id", value: userId)
+            .execute()
+            .value
+
+        return result.first?.onboarding_completed ?? false
+    }
 }
 
 // MARK: - DTO
-private struct UserProfileDTO: Codable {
+struct UserProfileDTO: Codable {
     let id: UUID
     let email: String
     let full_name: String?

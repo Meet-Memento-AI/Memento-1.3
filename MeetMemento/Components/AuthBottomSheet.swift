@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 public struct AuthBottomSheet: View {
     // MARK: - Mode
@@ -61,6 +62,8 @@ public struct AuthBottomSheet: View {
     @State private var email: String = ""
     @State private var status: String = ""
     @State private var isLoading: Bool = false
+    @State private var isAppleLoading: Bool = false
+    @State private var isGoogleLoading: Bool = false
     @State private var navigateToOTP: Bool = false
 
     // MARK: - Initializer
@@ -137,10 +140,15 @@ public struct AuthBottomSheet: View {
 
                     // Social auth buttons
                     VStack(spacing: 12) {
-                        Button(action: { status = "Apple \(mode.statusPrefix) (stub)" }) {
+                        Button(action: { signInWithApple() }) {
                             HStack(spacing: 8) {
-                                Image(systemName: "apple.logo")
-                                    .font(.system(size: 18, weight: .medium))
+                                if isAppleLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "apple.logo")
+                                        .font(.system(size: 18, weight: .medium))
+                                }
                                 Text("Continue with Apple")
                                     .font(type.body1Bold)
                             }
@@ -150,24 +158,17 @@ public struct AuthBottomSheet: View {
                             .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                         }
+                        .disabled(isAppleLoading || isGoogleLoading)
+                        .opacity((isAppleLoading || isGoogleLoading) ? 0.7 : 1.0)
 
-                        Button(action: { status = "Google \(mode.statusPrefix) (stub)" }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "g.circle.fill")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text("Continue with Google")
-                                    .font(type.body1Bold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(theme.cardBackground)
-                            .foregroundStyle(theme.foreground)
-                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous)
-                                    .strokeBorder(theme.border, lineWidth: 1.5)
-                            )
+                        GoogleSignInButton(
+                            title: isGoogleLoading ? "Signing in..." : "Continue with Google",
+                            scheme: .light
+                        ) {
+                            signInWithGoogle()
                         }
+                        .disabled(isAppleLoading || isGoogleLoading)
+                        .opacity((isAppleLoading || isGoogleLoading) ? 0.7 : 1.0)
                     }
 
                     // Status message
@@ -242,6 +243,57 @@ public struct AuthBottomSheet: View {
                 await MainActor.run {
                     isLoading = false
                     status = "Failed to send code. Please try again."
+                }
+            }
+        }
+    }
+
+    private func signInWithApple() {
+        isAppleLoading = true
+        status = ""
+
+        Task {
+            do {
+                try await authViewModel.signInWithApple()
+                await MainActor.run {
+                    isAppleLoading = false
+                    // Auth state change will trigger onSuccess via onChange
+                }
+            } catch let error as AppleSignInError {
+                await MainActor.run {
+                    isAppleLoading = false
+                    if case .canceled = error {
+                        // User canceled, don't show error
+                        status = ""
+                    } else {
+                        status = error.localizedDescription
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isAppleLoading = false
+                    status = "Apple Sign In failed. Please try again."
+                }
+            }
+        }
+    }
+
+    private func signInWithGoogle() {
+        isGoogleLoading = true
+        status = ""
+
+        Task {
+            do {
+                let url = try await authViewModel.signInWithGoogle()
+                await MainActor.run {
+                    isGoogleLoading = false
+                    // Open URL in Safari for OAuth flow
+                    UIApplication.shared.open(url)
+                }
+            } catch {
+                await MainActor.run {
+                    isGoogleLoading = false
+                    status = "Google Sign In failed. Please try again."
                 }
             }
         }

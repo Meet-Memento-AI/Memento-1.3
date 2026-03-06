@@ -59,16 +59,35 @@ class EntryViewModel: ObservableObject {
         self.userFirstName = MockDataProvider.shared.mockUserFirstName
         print("📱 UI Mode: Loaded \(entries.count) mock entries")
         #else
-        // Production Mode - Use Supabase
-        do {
-            let userEntries = try await JournalService.shared.fetchEntries()
-            self.entries = userEntries.map { mapToEntry($0) }
+        // Production Mode - Use Supabase with retry for cancelled requests
+        var retryCount = 0
+        let maxRetries = 3
 
-            // Load user profile to get first name
-            await loadUserProfile()
-        } catch {
-            print("Error loading entries: \(error)")
-            self.errorMessage = "Failed to load: \(error.localizedDescription)"
+        while retryCount < maxRetries {
+            do {
+                let userEntries = try await JournalService.shared.fetchEntries()
+                self.entries = userEntries.map { mapToEntry($0) }
+
+                // Load user profile to get first name
+                await loadUserProfile()
+                break // Success, exit retry loop
+            } catch let error as NSError where error.code == NSURLErrorCancelled {
+                // Request was cancelled (often during auth state transitions)
+                retryCount += 1
+                print("⚠️ Request cancelled (attempt \(retryCount)/\(maxRetries)), retrying...")
+
+                if retryCount < maxRetries {
+                    // Wait briefly for session to stabilize before retrying
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+                } else {
+                    print("Error loading entries after \(maxRetries) retries: \(error)")
+                    self.errorMessage = "Failed to load. Please pull to refresh."
+                }
+            } catch {
+                print("Error loading entries: \(error)")
+                self.errorMessage = "Failed to load: \(error.localizedDescription)"
+                break // Non-retryable error, exit loop
+            }
         }
         #endif
 

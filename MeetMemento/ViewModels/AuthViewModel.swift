@@ -9,6 +9,7 @@
 import Foundation
 import SwiftUI
 import Supabase
+import AuthenticationServices
 
 /// Auth state enum for onboarding flow
 enum AuthState: Equatable {
@@ -177,6 +178,91 @@ class AuthViewModel: ObservableObject {
         // For now, the metadata update is a good first step.
     }
 
+    // MARK: - Apple Sign In
+
+    /// Signs in with Apple using native AuthenticationServices
+    func signInWithApple() async throws {
+        // 1. Get Apple credential via native Sign In
+        let appleResult = try await AppleSignInService.shared.signIn()
+
+        // 2. Sign in to Supabase with the Apple ID token
+        let session = try await client.auth.signInWithIdToken(
+            credentials: .init(
+                provider: .apple,
+                idToken: appleResult.idToken,
+                nonce: appleResult.nonce
+            )
+        )
+
+        // 3. Create/update user profile with OAuth data
+        let email = appleResult.email ?? session.user.email ?? ""
+        try await UserService.shared.ensureUserExistsWithProfile(
+            id: session.user.id,
+            email: email,
+            fullName: appleResult.fullName
+        )
+
+        // 4. Check onboarding status from database
+        let hasOnboarded = try await UserService.shared.hasCompletedOnboarding(userId: session.user.id)
+
+        // 5. Brief delay to allow Supabase session to fully stabilize
+        // This prevents "cancelled" errors when the UI immediately loads data
+        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+
+        // 6. Update auth state
+        self.isAuthenticated = true
+        self.hasCompletedOnboarding = hasOnboarded
+        self.authState = .authenticated(needsOnboarding: !hasOnboarded)
+
+        print("✅ Apple Sign In successful for user: \(session.user.id)")
+    }
+
+    // MARK: - Google Sign In
+
+    /// Initiates Google Sign In via OAuth redirect flow
+    /// Returns the URL to open in Safari for authentication
+    func signInWithGoogle() async throws -> URL {
+        // Use OAuth redirect flow - no SDK needed
+        let redirectURL = URL(string: "memento://auth/callback")!
+
+        let url = try client.auth.getOAuthSignInURL(
+            provider: .google,
+            redirectTo: redirectURL
+        )
+
+        print("✅ Google OAuth URL generated")
+        return url
+    }
+
+    /// Handles OAuth callback URL (called from MeetMementoApp.onOpenURL)
+    func handleOAuthCallback(url: URL) async throws {
+        // Parse session from callback URL
+        let session = try await client.auth.session(from: url)
+
+        // Create/update user profile
+        let email = session.user.email ?? ""
+        let fullName = session.user.userMetadata["full_name"]?.stringValue
+
+        try await UserService.shared.ensureUserExistsWithProfile(
+            id: session.user.id,
+            email: email,
+            fullName: fullName
+        )
+
+        // Check onboarding status
+        let hasOnboarded = try await UserService.shared.hasCompletedOnboarding(userId: session.user.id)
+
+        // Brief delay to allow Supabase session to fully stabilize
+        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+
+        // Update auth state
+        self.isAuthenticated = true
+        self.hasCompletedOnboarding = hasOnboarded
+        self.authState = .authenticated(needsOnboarding: !hasOnboarded)
+
+        print("✅ OAuth callback handled for user: \(session.user.id)")
+    }
+
     /// Deletes the user's account and all associated data
     func deleteAccount() async throws {
         guard let userId = client.auth.currentUser?.id else {
@@ -192,7 +278,7 @@ class AuthViewModel: ObservableObject {
 
         // 2. Delete all journal entries
         try await client
-            .from("entries")
+            .from("journal_entries")
             .delete()
             .eq("user_id", value: userId)
             .execute()
@@ -213,7 +299,25 @@ class AuthViewModel: ObservableObject {
     }
 }
 
-enum AuthError: Error {
+enum AuthError: LocalizedError {
     case missingEmail
     case notAuthenticated
+    case oauthFailed(String)
+    case appleSignInFailed(String)
+    case googleSignInFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingEmail:
+            return "Email is required"
+        case .notAuthenticated:
+            return "Not authenticated"
+        case .oauthFailed(let message):
+            return "OAuth failed: \(message)"
+        case .appleSignInFailed(let message):
+            return "Apple Sign In failed: \(message)"
+        case .googleSignInFailed(let message):
+            return "Google Sign In failed: \(message)"
+        }
+    }
 }

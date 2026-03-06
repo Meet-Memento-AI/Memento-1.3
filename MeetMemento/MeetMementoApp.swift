@@ -64,7 +64,21 @@ struct MeetMementoApp: App {
                 print("🔴 .task block completed")
                 #endif
             }
-            // Removed: AuthService.handleRedirectURL\n
+            .onOpenURL { url in
+                // Handle OAuth callback from Google Sign In
+                Task {
+                    do {
+                        #if DEBUG
+                        print("🔴 Received OAuth callback URL: \(url)")
+                        #endif
+                        try await authViewModel.handleOAuthCallback(url: url)
+                    } catch {
+                        #if DEBUG
+                        print("🔴 OAuth callback error: \(error)")
+                        #endif
+                    }
+                }
+            }
         }
     }
 }
