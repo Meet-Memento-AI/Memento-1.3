@@ -305,24 +305,12 @@ serve(async (req) => {
         const parsed = JSON.parse(rawText);
         // Ensure body exists and is a non-empty string
         if (typeof parsed.body === 'string' && parsed.body.trim()) {
-          let bodyText = parsed.body;
-
-          // Guard against nested JSON in body
-          if (bodyText.startsWith('{') && bodyText.includes('"body"')) {
-            try {
-              const nested = JSON.parse(bodyText);
-              if (nested.body) {
-                bodyText = nested.body;
-              }
-            } catch {
-              // Not nested JSON, use as-is
-            }
-          }
-
+          // Use cleanParsedBody to handle nested JSON and sanitization
+          const cleanedBody = cleanParsedBody(parsed);
           structuredReply = {
             heading1: parsed.heading1 || null,
             heading2: parsed.heading2 || null,
-            body: bodyText
+            body: cleanedBody
           };
         } else {
           // JSON parsed but body is missing/empty - use fallback message
@@ -334,22 +322,12 @@ serve(async (req) => {
           };
         }
       } catch {
-        // JSON parsing failed - check if rawText contains JSON-like structure
-        if (rawText.includes('"body"')) {
-          // Try to extract body with regex as last resort
-          const bodyMatch = rawText.match(/"body"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-          if (bodyMatch) {
-            structuredReply = {
-              heading1: null,
-              heading2: null,
-              body: bodyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n')
-            };
-          } else {
-            structuredReply = { heading1: null, heading2: null, body: rawText };
-          }
-        } else {
-          structuredReply = { heading1: null, heading2: null, body: rawText };
-        }
+        // JSON parsing failed - sanitize rawText to ensure no raw JSON leaks to users
+        structuredReply = {
+          heading1: null,
+          heading2: null,
+          body: sanitizeResponseBody(rawText)
+        };
       }
     }
 
@@ -498,4 +476,78 @@ function jsonResponse(data: Record<string, unknown>, status: number): Response {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Sanitizes response body to ensure users never see raw JSON.
+ * If text looks like JSON, tries to extract readable content or returns friendly fallback.
+ */
+function sanitizeResponseBody(text: string): string {
+  const trimmed = text.trim();
+
+  // If text doesn't look like JSON, return as-is
+  if (!trimmed.startsWith('{')) {
+    return text;
+  }
+
+  // Try multiple patterns to extract body from JSON-like text
+  const patterns = [
+    /"body"\s*:\s*"((?:[^"\\]|\\.)*)"/,    // Standard JSON body
+    /"body"\s*:\s*'((?:[^'\\]|\\.)*)'/,     // Single quotes
+    /body:\s*["']([^"']+)["']/,             // Unquoted key
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) {
+      return match[1]
+        .replace(/\\"/g, '"')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t');
+    }
+  }
+
+  // Last resort: return user-friendly error, never raw JSON
+  console.warn('sanitizeResponseBody: Could not extract body from JSON-like text');
+  return "I had trouble formulating a response. Could you try rephrasing your question?";
+}
+
+/**
+ * Cleans parsed body by unwrapping nested JSON and sanitizing.
+ * Guards against recursive JSON structures from Gemini.
+ */
+function cleanParsedBody(parsed: { body?: unknown }): string {
+  let bodyText = parsed.body;
+
+  // Guard against nested JSON (recursive, max 3 attempts)
+  let attempts = 0;
+  while (
+    typeof bodyText === 'string' &&
+    bodyText.trim().startsWith('{') &&
+    attempts < 3
+  ) {
+    try {
+      const nested = JSON.parse(bodyText);
+      if (nested.body) {
+        bodyText = nested.body;
+      } else {
+        break;
+      }
+    } catch {
+      break;
+    }
+    attempts++;
+  }
+
+  // Final sanitization
+  if (typeof bodyText !== 'string' || !bodyText.trim()) {
+    return "I had trouble formulating a response. Please try again.";
+  }
+
+  // If after unwrapping we still have JSON-like text, sanitize it
+  if (bodyText.trim().startsWith('{')) {
+    return sanitizeResponseBody(bodyText);
+  }
+
+  return bodyText;
 }

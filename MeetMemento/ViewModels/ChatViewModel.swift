@@ -57,6 +57,25 @@ class ChatViewModel: ObservableObject {
                     return (extracted, aiContent)
                 }
             }
+
+            // Raw JSON leaked through - regex extraction failed, show user-friendly message
+            #if DEBUG
+            print("⚠️ [ChatViewModel] Raw JSON detected but body extraction failed")
+            #endif
+            let fallbackBody = "I had trouble processing this response. Please try again."
+            let aiContent = AIOutputContent(heading1: nil, heading2: nil, body: fallbackBody)
+            return (fallbackBody, aiContent)
+        }
+
+        // Final check: if content still looks like raw JSON (starts with '{'), sanitize
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{") {
+            #if DEBUG
+            print("⚠️ [ChatViewModel] Unexpected JSON-like content in message")
+            #endif
+            let fallbackBody = "I had trouble processing this response. Please try again."
+            let aiContent = AIOutputContent(heading1: nil, heading2: nil, body: fallbackBody)
+            return (fallbackBody, aiContent)
         }
 
         // Not JSON - return as-is (legacy plain text)
