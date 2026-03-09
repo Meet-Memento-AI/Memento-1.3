@@ -15,7 +15,8 @@ public struct AIChatView: View {
     @Environment(\.typography) private var type
     @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var viewModel = ChatViewModel()
+    /// ViewModel passed from parent to persist across tab switches
+    @ObservedObject var viewModel: ChatViewModel
 
     @State private var selectedCitations: [JournalCitation]? = nil
     @State private var showCitationsSheet = false
@@ -30,7 +31,8 @@ public struct AIChatView: View {
         "Summarize my journal entries in the last month"
     ]
 
-    public init(isEmbedded: Bool = false) {
+    init(viewModel: ChatViewModel, isEmbedded: Bool = false) {
+        self.viewModel = viewModel
         self.isEmbedded = isEmbedded
     }
     
@@ -163,6 +165,7 @@ public struct AIChatView: View {
                             ForEach(viewModel.messages) { message in
                                 ChatMessageBubble(
                                     message: message,
+                                    animate: message.isNew,
                                     onCitationsTapped: {
                                         if let citations = message.citations, !citations.isEmpty {
                                             selectedCitations = citations
@@ -232,7 +235,7 @@ public struct AIChatView: View {
         ChatInputField(
             text: $viewModel.inputText,
             isSending: viewModel.isLoading,
-            hasChatHistory: !viewModel.messages.isEmpty,
+            hasChatHistory: !viewModel.sessions.isEmpty,
             onSend: { viewModel.sendMessage() },
             onJournalTap: { showChatHistorySheet = true }
         )
@@ -291,16 +294,18 @@ public struct AIChatView: View {
 // MARK: - Previews
 
 #Preview("Empty State") {
+    @Previewable @StateObject var viewModel = ChatViewModel()
     NavigationStack {
-        AIChatView()
+        AIChatView(viewModel: viewModel)
     }
     .useTheme()
     .useTypography()
 }
 
 #Preview("With Messages") {
+    @Previewable @StateObject var viewModel = ChatViewModel()
     NavigationStack {
-        AIChatView()
+        AIChatView(viewModel: viewModel)
             .onAppear {
                 // Mock messages for preview
             }
@@ -324,8 +329,9 @@ public struct AIChatView: View {
 }
 
 #Preview("Dark Mode") {
+    @Previewable @StateObject var viewModel = ChatViewModel()
     NavigationStack {
-        AIChatView()
+        AIChatView(viewModel: viewModel)
     }
     .useTheme()
     .useTypography()
