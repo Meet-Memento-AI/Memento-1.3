@@ -2,6 +2,30 @@
 
 This directory contains SQL migration scripts for the MeetMemento Supabase database.
 
+## Migration 002: Chat Sessions and Messages
+
+**Purpose:** Create `chat_sessions` and `chat_messages` tables for AI chat history persistence.
+
+### Features
+
+- ✅ **Session Storage** - Chat sessions with user, title, and timestamp
+- ✅ **Message Storage** - Full message history with AI structured content (headings, body, citations)
+- ✅ **Row Level Security** - Users can only access their own sessions and messages
+- ✅ **Indexes** - Fast queries by user and session
+
+### How to Apply
+
+1. Open `supabase_migrations/002_create_chat_tables.sql`
+2. Copy contents and run in Supabase SQL Editor
+3. Verify tables `chat_sessions` and `chat_messages` exist
+
+### App Integration
+
+- **`Services/ChatService.swift`** - Fetches and saves sessions/messages
+- **`Views/AI-Chat/AIChatView.swift`** - Uses ChatService when loading sessions; falls back to mock when tables don't exist
+
+---
+
 ## Migration 001: Journal Insights Table
 
 **Purpose:** Create the `journal_insights` table to store AI-generated insights with milestone versioning (3, 6, 9, 12 entries, etc.)

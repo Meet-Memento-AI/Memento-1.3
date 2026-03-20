@@ -19,6 +19,10 @@ public struct AIChatView: View {
     @State private var inputText: String = ""
     @State private var isSending: Bool = false
 
+    // Session cache: when switching between chats, restore from cache instead of reloading with animation
+    @State private var sessionCache: [UUID: [ChatMessage]] = [:]
+    @State private var currentSessionId: UUID?
+
     // Memory optimization: cap message history to prevent unbounded growth
     private let maxMessagesInMemory = 100
     @State private var reviewedJournalCount: Int = 5 // Mock data
@@ -273,10 +277,14 @@ public struct AIChatView: View {
     }
     
     private func loadInitialState() {
-        // Mock initial messages for UI preview (remove when backend is ready)
-        // For now, start with empty state
         messages = []
         reviewedJournalCount = 5 // Mock data
+        // Load sessions from database when available; keep mock as fallback
+        Task { @MainActor in
+            if let dbSessions = try? await ChatService.shared.fetchSessions(), !dbSessions.isEmpty {
+                chatSessions = dbSessions
+            }
+        }
     }
     
     private func sendMessage(prompt: String? = nil) {
@@ -287,6 +295,14 @@ public struct AIChatView: View {
             text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         guard !text.isEmpty, !isSending else { return }
+
+        // Create a new session when starting a fresh chat (so it can be cached when switching)
+        if currentSessionId == nil && messages.isEmpty {
+            let newSession = ChatSession(title: text, createdAt: Date())
+            chatSessions.insert(newSession, at: 0)
+            currentSessionId = newSession.id
+            Task { try? await ChatService.shared.saveSession(newSession) }
+        }
 
         // Add user message with memory limit enforcement
         let userMessage = ChatMessage(
@@ -330,7 +346,8 @@ public struct AIChatView: View {
                     heading1: "Patterns in Your Resilience",
                     heading2: "Key Observations",
                     body: "I've analyzed your recent journal entries and found some interesting connections. **Mindfulness seems to be a key driver** for your productivity.\n\nWhen you mention *taking morning pauses*, your subsequent entries tend to be more positive and focused. Conversely, days without this routine often correlate with higher reported stress levels regarding deadlines.\n\nHere is a breakdown of what I found:\n1. **Morning Routine**: Highly effective for mood regulation.\n2. **Workload Management**: Needs more separation from personal time.\n\nConsider trying to maintain that morning pause even on successful days.",
-                    citations: mockCitations
+                    citations: mockCitations,
+                    shouldAnimateOutput: true
                 )
                 
                 withAnimation {
@@ -348,6 +365,14 @@ public struct AIChatView: View {
         if messages.count > maxMessagesInMemory {
             messages.removeFirst(messages.count - maxMessagesInMemory)
         }
+        // Update session cache so switching away and back shows the latest messages
+        if let sessionId = currentSessionId {
+            sessionCache[sessionId] = messages
+            // Persist to database in background when available
+            Task {
+                try? await ChatService.shared.saveMessages(messages, sessionId: sessionId)
+            }
+        }
     }
     
     private func dismissKeyboard() {
@@ -357,9 +382,32 @@ public struct AIChatView: View {
     // MARK: - Chat History Actions
 
     private func loadSession(_ session: ChatSession) {
-        // TODO: Load actual session messages from backend
-        // For now, show a mock loaded state using the session title (first message)
-        messages = [
+        // Restore from cache if we've loaded this session before — no reload, no typewriter animation
+        if let cached = sessionCache[session.id] {
+            messages = cached
+            currentSessionId = session.id
+            return
+        }
+
+        // First time loading: try database, then fall back to mock
+        Task { @MainActor in
+            if let dbMessages = try? await ChatService.shared.fetchMessages(sessionId: session.id), !dbMessages.isEmpty {
+                sessionCache[session.id] = dbMessages
+                currentSessionId = session.id
+                messages = dbMessages
+                return
+            }
+            // Fall back to mock when database is empty or unavailable
+            let loadedMessages = loadSessionMessages(session)
+            sessionCache[session.id] = loadedMessages
+            currentSessionId = session.id
+            messages = loadedMessages
+        }
+    }
+
+    /// Loads messages for a session from mock data. Used when database returns nil/empty.
+    private func loadSessionMessages(_ session: ChatSession) -> [ChatMessage] {
+        [
             ChatMessage(
                 content: session.title,
                 isFromUser: true
@@ -368,7 +416,8 @@ public struct AIChatView: View {
                 heading1: "Restored Session",
                 heading2: nil,
                 body: "This is a restored conversation from your chat history. The original AI response would appear here.",
-                citations: nil
+                citations: nil,
+                shouldAnimateOutput: false
             )
         ]
     }
@@ -377,6 +426,7 @@ public struct AIChatView: View {
         withAnimation {
             messages = []
             inputText = ""
+            currentSessionId = nil
         }
     }
 }

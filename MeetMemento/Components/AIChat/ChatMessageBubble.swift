@@ -57,8 +57,10 @@ public struct ChatMessageBubble: View {
                 .lineSpacing(type.bodyLineSpacing)
         } else if let aiContent = message.aiOutputContent {
             // AI messages with structured content (headings, body, citations)
+            // Only animate for newly received messages; skip typewriter for restored/cached sessions
             AIOutputComponent(
                 content: aiContent,
+                animate: message.shouldAnimateOutput,
                 onCitationsTapped: onCitationsTapped,
                 onRedo: onRedo
             )

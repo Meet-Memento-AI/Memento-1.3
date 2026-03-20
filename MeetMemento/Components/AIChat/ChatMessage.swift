@@ -49,13 +49,17 @@ public struct ChatMessage: Identifiable, Hashable {
     // Structured content for AI messages (optional)
     public let aiOutputContent: AIOutputContent?
     
+    /// When true, AI output uses typewriter animation. When false (e.g. restored/cached sessions), content shows immediately.
+    public let shouldAnimateOutput: Bool
+    
     public init(
         id: UUID = UUID(),
         content: String,
         isFromUser: Bool,
         timestamp: Date = Date(),
         citations: [JournalCitation]? = nil,
-        aiOutputContent: AIOutputContent? = nil
+        aiOutputContent: AIOutputContent? = nil,
+        shouldAnimateOutput: Bool = false
     ) {
         self.id = id
         self.content = content
@@ -63,6 +67,7 @@ public struct ChatMessage: Identifiable, Hashable {
         self.timestamp = timestamp
         self.citations = citations
         self.aiOutputContent = aiOutputContent
+        self.shouldAnimateOutput = shouldAnimateOutput
     }
     
     // Convenience initializer for AI messages with structured content
@@ -72,7 +77,8 @@ public struct ChatMessage: Identifiable, Hashable {
         heading2: String? = nil,
         body: String,
         citations: [JournalCitation]? = nil,
-        timestamp: Date = Date()
+        timestamp: Date = Date(),
+        shouldAnimateOutput: Bool = false
     ) -> ChatMessage {
         let outputContent = AIOutputContent(
             heading1: heading1,
@@ -86,7 +92,8 @@ public struct ChatMessage: Identifiable, Hashable {
             isFromUser: false,
             timestamp: timestamp,
             citations: citations,
-            aiOutputContent: outputContent
+            aiOutputContent: outputContent,
+            shouldAnimateOutput: shouldAnimateOutput
         )
     }
 }
