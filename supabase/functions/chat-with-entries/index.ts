@@ -2,17 +2,17 @@
 //
 // Edge function for Memento journaling companion chat
 //
-// Uses OpenAI to converse about journal entries with:
-// - Base Memento system prompt (mirror, not therapist; grounded in entries)
-// - Personalization from LearnAboutYourselfView (onboarding self-reflection)
-// - Personalization from YourGoalsView (selected journaling goals)
+// Uses Google Gemini with explicit context caching:
+// - Base Memento system prompt + personalization cached
+// - Journal entries cached (large, static context)
+// - Conversation messages sent each request (dynamic)
 //
+// See: https://ai.google.dev/gemini-api/docs/caching
 // Deploy: supabase functions deploy chat-with-entries
 //
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import OpenAI from 'https://deno.land/x/openai@v4.20.1/mod.ts';
 import type {
   ChatWithEntriesRequest,
   ChatResponse,
@@ -31,6 +31,9 @@ const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const CACHE_TTL_SECONDS = 3600; // 1 hour per Gemini best practices
 const MAX_ENTRIES = 30;
 const MAX_CONTENT_LENGTH = 600;
 
@@ -84,16 +87,13 @@ function buildPersonalizationSection(ctx?: SystemPromptContext): string {
   if (!ctx || (!ctx.onboardingSelfReflection?.trim() && !(ctx.selectedGoals?.length))) {
     return '';
   }
-
   const parts: string[] = [];
-
   if (ctx.onboardingSelfReflection?.trim()) {
     const escaped = ctx.onboardingSelfReflection.trim().replace(/"/g, '\\"');
     parts.push(`PERSONALIZATION (from user's onboarding):
 The user shared during onboarding: "${escaped}"
 Use this to guide your attention when exploring their entries. Pay special notice to themes, goals, or questions they expressed wanting to explore. Reference this naturally when relevant.`);
   }
-
   if (ctx.selectedGoals?.length) {
     const goals = ctx.selectedGoals.map(g => g.trim()).filter(Boolean);
     if (goals.length) {
@@ -102,21 +102,16 @@ The user chose to focus on: ${goals.join(', ')}
 When relevant, connect insights to these goals. Don't force every response to touch on all of them; use them as a lens for what might matter most to the user.`);
     }
   }
-
   if (parts.length === 0) return '';
-  return `
-
----
-${parts.join('\n\n')}`;
+  return `\n\n---\n${parts.join('\n\n')}`;
 }
 
 function buildSystemPrompt(ctx?: SystemPromptContext): string {
-  const personalization = buildPersonalizationSection(ctx);
-  return BASE_SYSTEM_PROMPT + personalization;
+  return BASE_SYSTEM_PROMPT + buildPersonalizationSection(ctx);
 }
 
 // ============================================================
-// JOURNAL CONTEXT FOR PROMPT
+// JOURNAL CONTEXT
 // ============================================================
 
 function formatEntriesForContext(entries: JournalEntryPayload[]): string {
@@ -126,6 +121,133 @@ function formatEntriesForContext(entries: JournalEntryPayload[]): string {
     content: e.content.substring(0, MAX_CONTENT_LENGTH)
   }));
   return JSON.stringify(truncated, null, 2);
+}
+
+/** Compute stable hash for cache key — entries must match exactly to reuse cache */
+async function computeEntriesHash(entries: JournalEntryPayload[]): Promise<string> {
+  const canonical = entries
+    .map(e => `${e.date}|${e.title || ''}|${e.content?.substring(0, 200) || ''}`)
+    .sort()
+    .join('\n');
+  const enc = new TextEncoder();
+  const data = enc.encode(canonical);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ============================================================
+// GEMINI API HELPERS
+// ============================================================
+
+async function createCache(
+  apiKey: string,
+  systemPrompt: string,
+  entriesText: string
+): Promise<{ name: string; expireTime?: string }> {
+  const url = `${GEMINI_BASE}/cachedContents?key=${apiKey}`;
+  const body = {
+    model: `models/${GEMINI_MODEL}`,
+    systemInstruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [{
+          text: `JOURNAL ENTRIES (context for this conversation — reference by date when citing):\n${entriesText}`
+        }]
+      }
+    ],
+    ttl: `${CACHE_TTL_SECONDS}s`
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini cache create failed: ${res.status} ${err}`);
+  }
+  const data = await res.json();
+  return { name: data.name, expireTime: data.expireTime };
+}
+
+async function generateWithCache(
+  apiKey: string,
+  cacheName: string,
+  messages: { content: string; isFromUser: string }[]
+): Promise<string> {
+  const contents = messages.map(m => ({
+    role: m.isFromUser === 'true' ? 'user' : 'model',
+    parts: [{ text: m.content }]
+  }));
+
+  const url = `${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const body = {
+    cachedContent: cacheName,
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 800
+    }
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini generate failed: ${res.status} ${err}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) {
+    throw new Error('Empty or invalid response from Gemini');
+  }
+  return text;
+}
+
+async function generateWithoutCache(
+  apiKey: string,
+  systemPrompt: string,
+  entriesText: string,
+  messages: { content: string; isFromUser: string }[]
+): Promise<string> {
+  const fullSystem = `${systemPrompt}\n\n---\nJOURNAL ENTRIES (context for this conversation — reference by date when citing):\n${entriesText}`;
+  const contents = [
+    { role: 'user', parts: [{ text: fullSystem }] },
+    ...messages.map(m => ({
+      role: m.isFromUser === 'true' ? 'user' : 'model',
+      parts: [{ text: m.content }]
+    }))
+  ];
+
+  const url = `${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const body = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 800
+    }
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini generate failed: ${res.status} ${err}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) {
+    throw new Error('Empty or invalid response from Gemini');
+  }
+  return text;
 }
 
 // ============================================================
@@ -152,6 +274,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return jsonResponse({ error: 'Unauthorized', code: 'AUTH_FAILED' }, 401);
+    }
+
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) {
+      return jsonResponse({ error: 'GEMINI_API_KEY not configured', code: 'CONFIG_ERROR' }, 500);
     }
 
     if (req.method !== 'POST') {
@@ -184,62 +311,60 @@ serve(async (req) => {
         word_count: e.word_count ?? 0
       }));
 
-    const apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) {
-      return jsonResponse({ error: 'OpenAI API key not configured', code: 'CONFIG_ERROR' }, 500);
-    }
-
-    const openai = new OpenAI({ apiKey });
     const systemPrompt = buildSystemPrompt(systemPromptContext);
-    const entriesContext = formatEntriesForContext(validEntries);
+    const entriesText = formatEntriesForContext(validEntries);
+    const entriesHash = await computeEntriesHash(validEntries);
 
-    const openAIMessages: OpenAI.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: `${systemPrompt}
+    // Check for valid cache (Gemini context caching)
+    const now = new Date().toISOString();
+    const { data: cached } = await supabase
+      .from('user_chat_caches')
+      .select('cache_name')
+      .eq('user_id', user.id)
+      .eq('entries_hash', entriesHash)
+      .gt('expires_at', now)
+      .limit(1)
+      .maybeSingle();
 
----
-JOURNAL ENTRIES (context for this conversation — reference by date when citing):
-${entriesContext}`
-      },
-      ...messages.map(m => ({
-        role: (m.isFromUser === 'true' ? 'user' : 'assistant') as 'user' | 'assistant',
-        content: m.content
-      }))
-    ];
+    let cacheName: string | null = cached?.cache_name ?? null;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1-nano-2025-04-14',
-      messages: openAIMessages,
-      temperature: 0.7,
-      max_tokens: 800
-    });
-
-    const responseText = completion.choices[0]?.message?.content?.trim();
-    if (!responseText) {
-      return jsonResponse({ error: 'Empty response from AI', code: 'EMPTY_RESPONSE' }, 502);
+    if (!cacheName) {
+      try {
+        const cache = await createCache(apiKey, systemPrompt, entriesText);
+        cacheName = cache.name;
+        const expiresAt = cache.expireTime ?? new Date(Date.now() + CACHE_TTL_SECONDS * 1000).toISOString();
+        await supabase.from('user_chat_caches').upsert(
+          {
+            user_id: user.id,
+            cache_name: cacheName,
+            entries_hash: entriesHash,
+            expires_at: expiresAt
+          },
+          { onConflict: 'user_id,entries_hash' }
+        );
+      } catch (cacheErr) {
+        // Fallback: cache may fail if below min tokens (1024 for Gemini 2.5 Flash)
+        console.warn('Cache create failed, using uncached request:', cacheErr);
+        cacheName = null;
+      }
     }
+
+    const responseText = cacheName
+      ? await generateWithCache(apiKey, cacheName, messages)
+      : await generateWithoutCache(apiKey, systemPrompt, entriesText, messages);
 
     const chatResponse: ChatResponse = {
-      body: responseText,
-      heading1: undefined,
-      heading2: undefined,
-      citations: undefined
+      body: responseText
     };
 
     return jsonResponse(chatResponse, 200);
   } catch (error) {
     console.error('chat-with-entries error:', error);
-    if (error instanceof OpenAI.APIError) {
-      if (error.status === 429) {
-        return jsonResponse(
-          { error: 'Too many requests. Please try again in a few minutes.', code: 'RATE_LIMIT' },
-          429
-        );
-      }
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    if (msg.includes('429') || msg.includes('resource exhausted')) {
       return jsonResponse(
-        { error: 'AI service temporarily unavailable.', code: 'OPENAI_ERROR' },
-        502
+        { error: 'Too many requests. Please try again in a few minutes.', code: 'RATE_LIMIT' },
+        429
       );
     }
     return jsonResponse(

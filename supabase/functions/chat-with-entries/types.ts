@@ -31,7 +31,7 @@ export interface ChatResponse {
   heading1?: string;
   heading2?: string;
   body: string;
-  citations?: ChatCitation[];
+  citations?: { id: string; entry_id: string; entry_title: string; entry_date: string; excerpt: string }[];
 }
 
 export interface ErrorResponse {

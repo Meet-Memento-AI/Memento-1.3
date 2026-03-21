@@ -260,6 +260,20 @@ Use this to guide your attention when exploring their entries...
 
 ---
 
+## Gemini Context Caching (Added)
+
+The chat-with-entries function uses **Google Gemini** with explicit context caching per [Gemini best practices](https://ai.google.dev/gemini-api/docs/caching):
+
+- **Cached**: system instruction (base prompt + personalization) + journal entries
+- **Per-request**: conversation messages only
+- **Cache metadata**: stored in `user_chat_caches` (user_id, entries_hash, cache_name, expires_at)
+- **TTL**: 1 hour
+- **Environment**: `GEMINI_API_KEY` required
+
+See `docs/GEMINI_CONTEXT_CACHING_PLAN.md` for full architecture.
+
+---
+
 ## Appendix: YourGoalsView Goals vs themes Table
 
 YourGoalsView uses different labels than the `themes` table:
