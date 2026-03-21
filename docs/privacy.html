@@ -25,7 +25,7 @@
 </head>
 <body>
     <h1>Privacy Policy for MeetMemento</h1>
-    <p class="meta"><strong>Last Updated:</strong> October 23, 2025</p>
+    <p class="meta"><strong>Last Updated:</strong> March 19, 2026</p>
 
     <h2>Overview</h2>
     <p>MeetMemento ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your personal information when you use our journaling app.</p>
@@ -67,25 +67,35 @@
 
     <h3>How We Protect Your Data</h3>
     <ul>
-        <li>End-to-end encryption for data transmission</li>
+        <li>All data is encrypted in transit using HTTPS/TLS</li>
+        <li>Your device PIN protects local app access</li>
         <li>Secure authentication with Apple Sign In, Google Sign In, or Email OTP</li>
         <li>Row-Level Security (RLS) ensures you can only access your own journal entries</li>
         <li>Regular security updates and monitoring</li>
     </ul>
 
-    <h2>AI-Powered Insights</h2>
+    <h2>AI-Powered Features</h2>
+    <p>MeetMemento uses Google Gemini to power AI features including Chat and Insights.</p>
+
+    <h3>Google Gemini 2.5 Flash</h3>
     <ul>
-        <li>We use OpenAI's API to generate insights about your journaling patterns</li>
-        <li>Journal entries are sent to OpenAI only when you request insights</li>
-        <li>OpenAI processes your data according to their <a href="https://openai.com/policies/usage-policies">Data Usage Policy</a></li>
-        <li>We do not use your journal entries to train AI models</li>
-        <li>Insights are cached to minimize API calls and protect your privacy</li>
+        <li><strong>Used for:</strong> AI Chat, semantic search, and insights generation</li>
+        <li><strong>Data sent:</strong> Your messages and relevant journal entries when you use AI features</li>
+        <li><strong>Processing:</strong> Real-time processing only; your data is not stored by Google</li>
+        <li><strong>Training:</strong> Google does not use your data to train AI models (Gemini API data usage policy)</li>
+    </ul>
+
+    <h3>Your Control</h3>
+    <ul>
+        <li>You can disable AI features anytime in Settings > Data & Privacy</li>
+        <li>When disabled, no journal data is sent to AI services</li>
+        <li>You will be asked for consent before first use of AI features</li>
     </ul>
 
     <h2>Data Sharing</h2>
     <p>We do <strong>not</strong> sell, rent, or share your personal information with third parties except:</p>
     <ul>
-        <li><strong>Service Providers:</strong> Supabase (hosting), OpenAI (AI insights), Apple/Google (authentication)</li>
+        <li><strong>Service Providers:</strong> Supabase (hosting), Google Gemini (AI features), Apple/Google (authentication)</li>
         <li><strong>Legal Requirements:</strong> If required by law, regulation, or valid legal process</li>
         <li><strong>Safety:</strong> To protect the rights, property, or safety of MeetMemento, our users, or others</li>
     </ul>
@@ -112,10 +122,10 @@
     <h2>Third-Party Services</h2>
     <p>MeetMemento integrates with:</p>
     <ul>
-        <li><strong>Supabase</strong> (<a href="https://supabase.com/privacy">Privacy Policy</a>)</li>
-        <li><strong>OpenAI</strong> (<a href="https://openai.com/policies/privacy-policy">Privacy Policy</a>)</li>
-        <li><strong>Apple Sign In</strong> (<a href="https://www.apple.com/legal/privacy/">Privacy Policy</a>)</li>
-        <li><strong>Google Sign In</strong> (<a href="https://policies.google.com/privacy">Privacy Policy</a>)</li>
+        <li><strong>Supabase</strong> (<a href="https://supabase.com/privacy">Privacy Policy</a>) - Cloud hosting and database</li>
+        <li><strong>Google Gemini</strong> (<a href="https://policies.google.com/privacy">Privacy Policy</a>) - AI-powered chat and insights</li>
+        <li><strong>Apple Sign In</strong> (<a href="https://www.apple.com/legal/privacy/">Privacy Policy</a>) - Authentication</li>
+        <li><strong>Google Sign In</strong> (<a href="https://policies.google.com/privacy">Privacy Policy</a>) - Authentication</li>
     </ul>
 
     <h2>Changes to This Policy</h2>

@@ -2,24 +2,46 @@
 //  PreferencesService.swift
 //  MeetMemento
 //
-//  Minimal preferences stub (UI boilerplate).
+//  User preferences for theme and feature toggles.
 //
 
 import Foundation
+import Combine
 
-/// Stub preferences service for theme management
-class PreferencesService {
+/// User preferences service for app-wide settings
+class PreferencesService: ObservableObject {
     static let shared = PreferencesService()
 
-    var themePreference: AppThemePreference {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "themePreference") ?? "system"
-            return AppThemePreference(rawValue: rawValue) ?? .system
-        }
-        set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "themePreference")
+    private let defaults = UserDefaults.standard
+
+    // MARK: - Keys
+    private enum Keys {
+        static let themePreference = "themePreference"
+        static let aiEnabled = "aiEnabled"
+    }
+
+    // MARK: - Published Properties
+    @Published var aiEnabled: Bool {
+        didSet {
+            defaults.set(aiEnabled, forKey: Keys.aiEnabled)
         }
     }
 
-    private init() {}
+    // MARK: - Theme Preference
+    var themePreference: AppThemePreference {
+        get {
+            let rawValue = defaults.string(forKey: Keys.themePreference) ?? "system"
+            return AppThemePreference(rawValue: rawValue) ?? .system
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: Keys.themePreference)
+        }
+    }
+
+    // MARK: - Initialization
+    private init() {
+        // Initialize aiEnabled from stored value, default to true
+        let storedEnabled = defaults.object(forKey: Keys.aiEnabled) as? Bool
+        self.aiEnabled = storedEnabled ?? true
+    }
 }

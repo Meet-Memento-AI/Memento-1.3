@@ -40,6 +40,9 @@ public struct DataUsageInfoView: View {
                 // How We Use Data Section
                 dataUsageSection
 
+                // AI Features Section
+                aiServicesSection
+
                 // Data Storage Section
                 dataStorageSection
 
@@ -153,6 +156,48 @@ public struct DataUsageInfoView: View {
         }
     }
 
+    private var aiServicesSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Text("AI Features")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(theme.foreground)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.xxs)
+
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                DataItem(
+                    icon: "brain",
+                    title: "AI-Powered Features",
+                    description: "Chat and Insights use Google Gemini. Your journal content is sent securely to generate responses. Google doesn't train on your data."
+                )
+
+                Divider()
+                    .background(theme.border)
+                    .padding(.horizontal, Spacing.md)
+
+                DataItem(
+                    icon: "arrow.up.doc",
+                    title: "What's Processed",
+                    description: "AI Chat: Your message + relevant entries. Insights: Selected entries (up to 500 chars each)."
+                )
+
+                Divider()
+                    .background(theme.border)
+                    .padding(.horizontal, Spacing.md)
+
+                DataItem(
+                    icon: "gearshape",
+                    title: "Your Control",
+                    description: "You can disable AI features anytime in Settings > Data & Privacy. When disabled, no data is sent to AI services."
+                )
+            }
+            .padding(.vertical, Spacing.sm)
+            .background(sectionCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+            .padding(.horizontal, Spacing.md)
+        }
+    }
+
     private var dataStorageSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Data Storage")
@@ -164,8 +209,8 @@ public struct DataUsageInfoView: View {
             VStack(alignment: .leading, spacing: Spacing.md) {
                 DataItem(
                     icon: "lock.shield.fill",
-                    title: "Encrypted & Secure",
-                    description: "All data is encrypted in transit and at rest using industry-standard encryption protocols."
+                    title: "Encrypted in Transit",
+                    description: "All data is transmitted securely using HTTPS encryption. Your device PIN protects local access."
                 )
 
                 Divider()

@@ -21,6 +21,8 @@ struct SettingsView: View {
     @State private var isDeletingAccount = false
     @State private var deleteAccountError = ""
 
+    @ObservedObject private var preferences = PreferencesService.shared
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
@@ -156,6 +158,40 @@ struct SettingsView: View {
 
             // Section content card
             VStack(spacing: 0) {
+                // AI Features Toggle
+                HStack {
+                    HStack(spacing: Spacing.sm) {
+                        Image(systemName: "brain")
+                            .font(.system(size: 20))
+                            .foregroundStyle(theme.primary)
+                            .frame(width: 28, height: 28)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("AI Features")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(theme.foreground)
+
+                            Text(preferences.aiEnabled
+                                ? "Chat and Insights use cloud AI"
+                                : "AI disabled – data stays on device")
+                                .font(.system(size: 14))
+                                .foregroundStyle(theme.mutedForeground)
+                        }
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $preferences.aiEnabled)
+                        .labelsHidden()
+                        .tint(theme.primary)
+                }
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+
+                Divider()
+                    .background(theme.border)
+                    .padding(.horizontal, Spacing.md)
+
                 SettingsRow(
                     icon: "hand.raised",
                     title: "Privacy Policy",
@@ -178,7 +214,7 @@ struct SettingsView: View {
                     subtitle: "Learn about data usage",
                     showChevron: true,
                     action: {
-                        print("Settings")
+                        showDataUsageInfo = true
                     }
                 )
             }

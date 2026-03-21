@@ -25,6 +25,8 @@ public struct AIChatView: View {
     @State private var scrollProxy: ScrollViewProxy?
     @StateObject private var keyboardObserver = KeyboardObserver()
 
+    @ObservedObject private var preferences = PreferencesService.shared
+
     private static let defaultSuggestions: [String] = [
         "Analyze my current mindset from my journal activity in the past week",
         "Explore the themes we've talked about from my journals about my friendships.",
@@ -44,43 +46,40 @@ public struct AIChatView: View {
     public var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
-                // Messages list - fills available space with bottom inset for input
-                messagesScrollView
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        // Reserve space for input field (input height + padding + keyboard offset)
-                        Color.clear.frame(height: 88 + keyboardBottomPadding(geometry: geometry))
-                    }
+                // Full-screen background - must fill entire space including safe areas
+                theme.background
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea(edges: .all)
 
-                // Input area - floats at bottom with no background
-                VStack {
-                    Spacer()
-                    floatingInputArea
-                        .padding(.bottom, keyboardBottomPadding(geometry: geometry))
+                if preferences.aiEnabled {
+                    // Messages list - fills available space with bottom inset for input
+                    messagesScrollView
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            // Reserve space for input field (input height + padding + keyboard offset)
+                            Color.clear.frame(height: 88 + keyboardBottomPadding(geometry: geometry))
+                        }
+
+
+                    // Input area - floats at bottom with no background
+                    VStack {
+                        Spacer()
+                        floatingInputArea
+                            .padding(.bottom, keyboardBottomPadding(geometry: geometry))
+                    }
+                } else {
+                    // AI Disabled State
+                    aiDisabledView
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea(edges: .all)
         }
-        .ignoresSafeArea(.keyboard) // Prevent double-adjustment
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(edges: .all)
+        .ignoresSafeArea(.keyboard)
+        .background(theme.background.ignoresSafeArea(edges: .all))
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            // Only show back button when NOT embedded (modal presentation)
-            if !isEmbedded {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(type.body1Bold)
-                    }
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 0)
-                    .accessibilityLabel("Back")
-                }
-            }
-        }
-        .toolbarBackground(.hidden, for: .navigationBar)
         .onDisappear {
             scrollTask?.cancel()
             scrollTask = nil
@@ -110,9 +109,13 @@ public struct AIChatView: View {
         .onAppear {
             Task {
                 await viewModel.fetchSessions()
+                if viewModel.userName == nil {
+                    await viewModel.fetchUserName()
+                }
             }
         }
         .alert("Something went wrong", isPresented: $viewModel.showingError) {
+            Button("Retry") { viewModel.retrySend() }
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "Please try again.")
@@ -139,7 +142,7 @@ public struct AIChatView: View {
                                 .padding(.leading, 20)
 
                             // Welcome message
-                            Text("Welcome John, let's dive deeper into your journal")
+                            Text("Welcome \(viewModel.userName ?? "there"), let's dive deeper into your journal")
                                 .font(type.h3)
                                 .foregroundStyle(theme.foreground)
                                 .multilineTextAlignment(.leading)
@@ -181,7 +184,7 @@ public struct AIChatView: View {
                             if viewModel.isLoading {
                                 AILoadingState()
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .transition(.opacity)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
                                     .id("loading-state")
                             }
                         }
@@ -216,6 +219,8 @@ public struct AIChatView: View {
             .onTapGesture {
                 dismissKeyboard()
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.background)
         }
     }
     
@@ -239,6 +244,44 @@ public struct AIChatView: View {
             onSend: { viewModel.sendMessage() },
             onJournalTap: { showChatHistorySheet = true }
         )
+    }
+
+    // MARK: - AI Disabled View
+
+    private var aiDisabledView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 56))
+                .foregroundStyle(theme.mutedForeground.opacity(0.5))
+
+            Text("AI Features Disabled")
+                .font(type.h3)
+                .foregroundStyle(theme.foreground)
+
+            Text("Enable AI features in Settings to use the chat assistant and get personalized insights.")
+                .font(type.body1)
+                .foregroundStyle(theme.mutedForeground)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button(action: {
+                preferences.aiEnabled = true
+            }) {
+                Text("Enable AI Features")
+                    .font(type.body1Bold)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(theme.primary)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.top, topContentInset)
     }
 
     // MARK: - Keyboard Padding Calculation

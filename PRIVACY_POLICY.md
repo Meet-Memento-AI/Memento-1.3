@@ -1,6 +1,6 @@
 # Privacy Policy for MeetMemento
 
-**Last Updated:** October 23, 2025
+**Last Updated:** March 19, 2026
 
 ## Overview
 
@@ -35,24 +35,32 @@ We use your information to:
 - All data is transmitted using HTTPS encryption
 
 ### How We Protect Your Data
-- End-to-end encryption for data transmission
+- All data is encrypted in transit using HTTPS/TLS
+- Your device PIN protects local app access
 - Secure authentication with Apple Sign In, Google Sign In, or Email OTP
 - Row-Level Security (RLS) ensures you can only access your own journal entries
 - Regular security updates and monitoring
 
-## AI-Powered Insights
+## AI-Powered Features
 
-- We use OpenAI's API to generate insights about your journaling patterns
-- Journal entries are sent to OpenAI only when you request insights
-- OpenAI processes your data according to their [Data Usage Policy](https://openai.com/policies/usage-policies)
-- We do not use your journal entries to train AI models
-- Insights are cached to minimize API calls and protect your privacy
+MeetMemento uses Google Gemini to power AI features including Chat and Insights.
+
+### Google Gemini 2.5 Flash
+- **Used for:** AI Chat, semantic search, and insights generation
+- **Data sent:** Your messages and relevant journal entries when you use AI features
+- **Processing:** Real-time processing only; your data is not stored by Google
+- **Training:** Google does not use your data to train AI models (Gemini API data usage policy)
+
+### Your Control
+- You can disable AI features anytime in Settings > Data & Privacy
+- When disabled, no journal data is sent to AI services
+- You will be asked for consent before first use of AI features
 
 ## Data Sharing
 
 We do **not** sell, rent, or share your personal information with third parties except:
 
-- **Service Providers**: Supabase (hosting), OpenAI (AI insights), Apple/Google (authentication)
+- **Service Providers**: Supabase (hosting), Google Gemini (AI features), Apple/Google (authentication)
 - **Legal Requirements**: If required by law, regulation, or valid legal process
 - **Safety**: To protect the rights, property, or safety of MeetMemento, our users, or others
 
@@ -77,10 +85,10 @@ MeetMemento is not intended for children under 13. We do not knowingly collect i
 ## Third-Party Services
 
 MeetMemento integrates with:
-- **Supabase** ([Privacy Policy](https://supabase.com/privacy))
-- **OpenAI** ([Privacy Policy](https://openai.com/policies/privacy-policy))
-- **Apple Sign In** ([Privacy Policy](https://www.apple.com/legal/privacy/))
-- **Google Sign In** ([Privacy Policy](https://policies.google.com/privacy))
+- **Supabase** ([Privacy Policy](https://supabase.com/privacy)) - Cloud hosting and database
+- **Google Gemini** ([Privacy Policy](https://policies.google.com/privacy)) - AI-powered chat and insights
+- **Apple Sign In** ([Privacy Policy](https://www.apple.com/legal/privacy/)) - Authentication
+- **Google Sign In** ([Privacy Policy](https://policies.google.com/privacy)) - Authentication
 
 ## Changes to This Policy
 
