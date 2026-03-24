@@ -20,7 +20,13 @@ struct MeetMementoApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authViewModel.isAuthenticated && authViewModel.hasCompletedOnboarding {
+                if !authViewModel.hasCheckedAuth {
+                    // Show loading until auth restoration completes - prevents blank screen
+                    // that occurred ~50% of the time during WelcomeView→ContentView transition
+                    LoadingView()
+                        .useTheme()
+                        .useTypography()
+                } else if authViewModel.isAuthenticated && authViewModel.hasCompletedOnboarding {
                     // Fully onboarded user - show main app
                     ContentView()
                         .useTheme()
