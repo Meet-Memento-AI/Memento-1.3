@@ -27,6 +27,11 @@ class AuthViewModel: ObservableObject {
     @Published var hasCompletedOnboarding = false
     @Published var authState: AuthState = .unauthenticated
 
+    /// True once we have completed the initial auth check (session restoration).
+    /// Used to show LoadingView on launch instead of briefly flashing WelcomeView
+    /// before switching to ContentView (which caused blank screen ~50% of the time).
+    @Published var hasCheckedAuth = false
+
     // Pending profile from Apple Sign In (stub/flow)
     var pendingFirstName: String?
     var pendingLastName: String?
@@ -66,6 +71,8 @@ class AuthViewModel: ObservableObject {
             self.isAuthenticated = false
             self.authState = .unauthenticated
         }
+        // Mark auth check complete so app can show the correct view (no more blank screen flash)
+        self.hasCheckedAuth = true
     }
 
     /// Explicitly check auth state (similar to initializeAuth, can range depending on logic)
@@ -153,6 +160,7 @@ class AuthViewModel: ObservableObject {
         self.isAuthenticated = true
         self.hasCompletedOnboarding = true
         self.authState = .authenticated(needsOnboarding: false)
+        self.hasCheckedAuth = true
     }
 
     /// Skip to onboarding flow for UI testing (no real auth session).
@@ -160,6 +168,7 @@ class AuthViewModel: ObservableObject {
         self.isAuthenticated = true
         self.hasCompletedOnboarding = false
         self.authState = .authenticated(needsOnboarding: true)
+        self.hasCheckedAuth = true
     }
 
     func updateProfile(firstName: String, lastName: String) async throws {
