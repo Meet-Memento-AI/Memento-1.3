@@ -331,10 +331,21 @@ public struct AIChatView: View {
             #else
             do {
                 let entries = entryViewModel.entries.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                // Refresh each send so the first message cannot race ahead of loadInitialState()
+                // and onboarding data is always applied after completeOnboarding().
+                let contextForChat: UserContext?
+                do {
+                    contextForChat = try await UserContextService.shared.fetchUserContext()
+                } catch {
+                    contextForChat = userContext
+                }
+                await MainActor.run {
+                    userContext = contextForChat
+                }
                 let content = try await InsightsService.shared.chat(
                     messages: messages,
                     entries: entries.isEmpty ? Entry.sampleEntries : entries,
-                    userContext: userContext
+                    userContext: contextForChat
                 )
                 let aiResponse = ChatMessage.aiMessage(
                     heading1: content.heading1,
