@@ -6,6 +6,19 @@
 //
 
 import SwiftUI
+import UIKit
+
+// MARK: - Root Background
+/// A background view that matches the app's theme and extends to all screen edges
+private struct RootBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        // Use theme background colors from design tokens
+        (colorScheme == .dark ? GrayScale.gray900 : BaseColors.white)
+            .ignoresSafeArea()
+    }
+}
 
 @main
 struct MeetMementoApp: App {
@@ -14,6 +27,10 @@ struct MeetMementoApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // Let RootBackground handle the theme-aware background color
+        // Using clear allows SwiftUI to manage the background dynamically
+        UIWindow.appearance().backgroundColor = .clear
+
         #if DEBUG
         print("🔴 MeetMementoApp init() called")
         #endif
@@ -21,58 +38,73 @@ struct MeetMementoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if authViewModel.isInitializing {
-                    // Show launch screen / loading while checking auth
-                    LaunchLoadingView()
-                        .useTheme()
-                        .useTypography()
-                } else if authViewModel.isAuthenticated && authViewModel.hasCompletedOnboarding {
-                    // LOGGED IN: Show lock screen for verification, then main app
-                    if lockScreenViewModel.shouldShowLockScreen {
-                        LockScreenView(viewModel: lockScreenViewModel)
+            ZStack {
+                // Full-screen background that extends under status bar/dynamic island
+                RootBackground()
+
+                Group {
+                    if authViewModel.isInitializing {
+                        // Show launch screen / loading while checking auth
+                        LaunchLoadingView()
+                            .useTheme()
+                            .useTypography()
+                    } else if authViewModel.isAuthenticated && authViewModel.hasCompletedOnboarding {
+                        // LOGGED IN: Show lock screen for verification, then main app
+                        if lockScreenViewModel.shouldShowLockScreen {
+                            LockScreenView(viewModel: lockScreenViewModel)
+                                .useTheme()
+                                .useTypography()
+                                .environmentObject(authViewModel)
+                        } else {
+                            ContentView()
+                                .useTheme()
+                                .useTypography()
+                                .environmentObject(authViewModel)
+                                .onAppear {
+                                    #if DEBUG
+                                    print("🔴 ContentView appeared")
+                                    #endif
+                                }
+                        }
+                    } else if authViewModel.isAuthenticated && !authViewModel.hasCompletedOnboarding {
+                        // Authenticated but needs onboarding
+                        OnboardingCoordinatorView(lockScreenViewModel: lockScreenViewModel)
                             .useTheme()
                             .useTypography()
                             .environmentObject(authViewModel)
                     } else {
-                        ContentView()
+                        // LOGGED OUT: Show welcome/sign-in
+                        WelcomeView()
                             .useTheme()
                             .useTypography()
                             .environmentObject(authViewModel)
                             .onAppear {
                                 #if DEBUG
-                                print("🔴 ContentView appeared")
+                                print("🔴 WelcomeView appeared")
+                                print("🔴 Auth state: isAuthenticated=\(authViewModel.isAuthenticated), hasCompletedOnboarding=\(authViewModel.hasCompletedOnboarding)")
                                 #endif
                             }
                     }
-                } else if authViewModel.isAuthenticated && !authViewModel.hasCompletedOnboarding {
-                    // Authenticated but needs onboarding
-                    OnboardingCoordinatorView()
-                        .useTheme()
-                        .useTypography()
-                        .environmentObject(authViewModel)
-                } else {
-                    // LOGGED OUT: Show welcome/sign-in
-                    WelcomeView()
-                        .useTheme()
-                        .useTypography()
-                        .environmentObject(authViewModel)
-                        .onAppear {
-                            #if DEBUG
-                            print("🔴 WelcomeView appeared")
-                            print("🔴 Auth state: isAuthenticated=\(authViewModel.isAuthenticated), hasCompletedOnboarding=\(authViewModel.hasCompletedOnboarding)")
-                            #endif
-                        }
                 }
+                .ignoresSafeArea()
             }
+            .ignoresSafeArea()
             .task {
                 #if DEBUG
                 print("🔴 .task block started")
                 #endif
                 await authViewModel.initializeAuth()
+                // Consume skip flag after auth initialization (handles post-onboarding state)
+                lockScreenViewModel.consumeSkipNextLockScreen()
                 #if DEBUG
                 print("🔴 .task block completed")
                 #endif
+            }
+            .onChange(of: authViewModel.hasCompletedOnboarding) { _, completed in
+                // Consume skip flag when transitioning from onboarding to main app
+                if completed {
+                    lockScreenViewModel.consumeSkipNextLockScreen()
+                }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 #if DEBUG

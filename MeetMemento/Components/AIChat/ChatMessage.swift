@@ -45,17 +45,22 @@ public struct ChatMessage: Identifiable, Hashable {
     public let isFromUser: Bool
     public let timestamp: Date
     public let citations: [JournalCitation]?
-    
+
     // Structured content for AI messages (optional)
     public let aiOutputContent: AIOutputContent?
-    
+
+    /// True for messages created in the current session (should animate).
+    /// False for messages loaded from database (should display instantly).
+    public let isNew: Bool
+
     public init(
         id: UUID = UUID(),
         content: String,
         isFromUser: Bool,
         timestamp: Date = Date(),
         citations: [JournalCitation]? = nil,
-        aiOutputContent: AIOutputContent? = nil
+        aiOutputContent: AIOutputContent? = nil,
+        isNew: Bool = false
     ) {
         self.id = id
         self.content = content
@@ -63,6 +68,7 @@ public struct ChatMessage: Identifiable, Hashable {
         self.timestamp = timestamp
         self.citations = citations
         self.aiOutputContent = aiOutputContent
+        self.isNew = isNew
     }
     
     // Convenience initializer for AI messages with structured content
@@ -72,7 +78,8 @@ public struct ChatMessage: Identifiable, Hashable {
         heading2: String? = nil,
         body: String,
         citations: [JournalCitation]? = nil,
-        timestamp: Date = Date()
+        timestamp: Date = Date(),
+        isNew: Bool = false
     ) -> ChatMessage {
         let outputContent = AIOutputContent(
             heading1: heading1,
@@ -86,7 +93,8 @@ public struct ChatMessage: Identifiable, Hashable {
             isFromUser: false,
             timestamp: timestamp,
             citations: citations,
-            aiOutputContent: outputContent
+            aiOutputContent: outputContent,
+            isNew: isNew
         )
     }
 }

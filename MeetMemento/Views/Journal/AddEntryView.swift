@@ -10,9 +10,10 @@ import SwiftUI
 // MARK: - Entry State
 
 public enum EntryState: Hashable {
-    case create                    // Regular journal entry
-    case createWithTitle(String)   // Create with pre-filled title
-    case edit(Entry)               // Editing existing entry
+    case create                                          // Regular journal entry
+    case createWithTitle(String)                         // Create with pre-filled title
+    case createWithContent(title: String, content: String) // Create with pre-filled title and content (e.g., from chat summary)
+    case edit(Entry)                                     // Editing existing entry
 }
 
 public struct AddEntryView: View {
@@ -25,6 +26,8 @@ public struct AddEntryView: View {
 
     /// Unique identifier for this view's speech session ownership
     private let speechOwnerId = "AddEntryView"
+
+    @StateObject private var keyboardObserver = KeyboardObserver()
 
     @State private var title: String
     @State private var text: String
@@ -57,6 +60,9 @@ public struct AddEntryView: View {
         case .createWithTitle(let prefillTitle):
             _title = State(initialValue: prefillTitle)
             _text = State(initialValue: "")
+        case .createWithContent(let prefillTitle, let prefillContent):
+            _title = State(initialValue: prefillTitle)
+            _text = State(initialValue: prefillContent)
         case .edit(let entry):
             _title = State(initialValue: entry.title)
             _text = State(initialValue: entry.text)
@@ -73,32 +79,45 @@ public struct AddEntryView: View {
     private var fabWidth: CGFloat {
         speechService.isRecording ? 96 : 48
     }
-    
-    public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Notion-style title field
-                titleField
-                    .padding(.top, 24)
-                
-                // Spacious body editor
-                bodyField
-                    .padding(.top, 16)
-                
-                Spacer(minLength: 100)
-            }
-            .padding(.horizontal, 20)
+
+    private func keyboardBottomPadding(geometry: GeometryProxy) -> CGFloat {
+        if keyboardObserver.isKeyboardVisible {
+            let safeArea = geometry.safeAreaInsets.bottom
+            return max(keyboardObserver.keyboardHeight - safeArea, 0) + 8
+        } else {
+            return 32
         }
+    }
+
+    public var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Notion-style title field
+                    titleField
+                        .padding(.top, 24)
+
+                    // Spacious body editor
+                    bodyField
+                        .padding(.top, 16)
+
+                    Spacer(minLength: 100) // Space for FAB when keyboard hidden
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .overlay(alignment: .bottom) {
+                microphoneFAB
+                    .padding(.bottom, keyboardBottomPadding(geometry: geometry))
+            }
+        }
+        .ignoresSafeArea(.keyboard)
         .background(theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 saveButton
             }
-        }
-        .overlay(alignment: .bottom) {
-            microphoneFAB
-                .padding(.bottom, 32)
         }
         .onAppear {
             setupInitialFocus()

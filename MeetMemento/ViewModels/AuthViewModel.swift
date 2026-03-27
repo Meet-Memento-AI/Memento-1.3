@@ -39,6 +39,26 @@ class AuthViewModel: ObservableObject {
 
     /// Restores session on app launch and checks onboarding status from DB.
     func initializeAuth() async {
+        // UI tests: clear any persisted session so Welcome + stable IDs are reachable.
+        let isUiTestRun =
+            ProcessInfo.processInfo.arguments.contains("-UITesting")
+            || ProcessInfo.processInfo.environment["MEETMEMENTO_UI_TEST"] == "1"
+        if isUiTestRun {
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { try? await self.client.auth.signOut() }
+                group.addTask {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+                await group.next()
+                group.cancelAll()
+            }
+            self.isInitializing = false
+            self.isAuthenticated = false
+            self.hasCompletedOnboarding = false
+            self.authState = .unauthenticated
+            return
+        }
+
         self.isInitializing = true
 
         defer {

@@ -13,6 +13,9 @@ struct FollowUpQuestionGroup: View {
     let questions: [String]
     var onQuestionTap: ((Int, String) -> Void)?
 
+    // MARK: - Environment
+    @Environment(\.theme) private var theme
+
     // MARK: - Body
     var body: some View {
         VStack(spacing: 24) {
@@ -28,7 +31,7 @@ struct FollowUpQuestionGroup: View {
                 // Add divider between questions (not after the last one)
                 if index < questions.count - 1 {
                     Rectangle()
-                        .fill(.white.opacity(0.2))
+                        .fill(theme.glassBorder)
                         .frame(height: 1)
                         .padding(.horizontal, 20)
                 }

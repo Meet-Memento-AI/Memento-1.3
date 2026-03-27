@@ -8,8 +8,10 @@
 
 import SwiftUI
 
+@MainActor
 struct LockScreenView: View {
     @ObservedObject var viewModel: LockScreenViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
@@ -48,6 +50,10 @@ struct LockScreenView: View {
                 } else if shouldShowRetryButton {
                     retryButton
                         .padding(.bottom, 80)
+                } else if !viewModel.isBiometricAvailable && !viewModel.hasPINFallback {
+                    // Emergency fallback - no auth method available
+                    emergencyFallbackView
+                        .padding(.bottom, 60)
                 }
             }
 
@@ -89,14 +95,24 @@ struct LockScreenView: View {
         .task(id: viewModel.isLocked) {
             // Auto-trigger biometric auth when lock state changes to locked
             guard viewModel.isLocked else { return }
-            guard !viewModel.showPINFallback && viewModel.isBiometricAvailable else { return }
+
+            // If biometrics not available, show PIN fallback immediately
+            guard viewModel.isBiometricAvailable else {
+                if viewModel.hasPINFallback {
+                    viewModel.showPINFallback = true
+                }
+                return
+            }
+
+            guard !viewModel.showPINFallback else { return }
             try? await Task.sleep(nanoseconds: 300_000_000)
             await viewModel.authenticateWithBiometrics()
         }
         .onChange(of: viewModel.showPINFallback) { _, showPIN in
             // Auto-focus PIN field when switching to PIN mode
             if showPIN {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                     isPinFieldFocused = true
                 }
             }
@@ -136,6 +152,34 @@ struct LockScreenView: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(theme.mutedForeground)
                 }
+            }
+        }
+    }
+
+    // MARK: - Emergency Fallback View
+
+    private var emergencyFallbackView: some View {
+        VStack(spacing: 16) {
+            Text("Unable to authenticate")
+                .font(type.body1)
+                .foregroundStyle(theme.foreground)
+            Text("Please sign out and try again")
+                .font(type.body2)
+                .foregroundStyle(theme.mutedForeground)
+            Button {
+                Task {
+                    await authViewModel.signOut()
+                }
+            } label: {
+                Text("Sign Out")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 28)
+                    .background(
+                        Capsule()
+                            .fill(theme.destructive)
+                    )
             }
         }
     }
@@ -186,9 +230,7 @@ struct LockScreenView: View {
             ForEach(0..<pinLength, id: \.self) { index in
                 Button {
                     // Focus the hidden TextField to show keyboard
-                    DispatchQueue.main.async {
-                        isPinFieldFocused = true
-                    }
+                    isPinFieldFocused = true
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -205,6 +247,8 @@ struct LockScreenView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("PIN digit \(index + 1) of \(pinLength)")
+                .accessibilityHint(index < enteredPIN.count ? "Filled" : "Empty")
             }
         }
     }
@@ -212,7 +256,8 @@ struct LockScreenView: View {
     // MARK: - PIN Validation
 
     private func validatePIN() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
             if viewModel.validatePIN(enteredPIN) {
                 // Success - viewModel will unlock
                 isPinFieldFocused = false
@@ -228,15 +273,15 @@ struct LockScreenView: View {
     }
 
     private func shakeAnimation() {
-        withAnimation(.interpolatingSpring(stiffness: 600, damping: 10)) {
-            shakeOffset = 10
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            withAnimation(.interpolatingSpring(stiffness: 600, damping: 10)) {
+                shakeOffset = 10
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
             withAnimation(.interpolatingSpring(stiffness: 600, damping: 10)) {
                 shakeOffset = -10
             }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            try? await Task.sleep(nanoseconds: 100_000_000)
             withAnimation(.interpolatingSpring(stiffness: 600, damping: 10)) {
                 shakeOffset = 0
             }

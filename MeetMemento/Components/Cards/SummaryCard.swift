@@ -23,7 +23,7 @@ public struct SummaryCard: View {
             // Header + Pages
             VStack(alignment: .leading, spacing: 16) {
                 HeaderLabel()
-                    .foregroundStyle(.white.opacity(0.96))
+                    .foregroundStyle(theme.overlayText)
 
                 // Swipeable pages
                 TabView(selection: $page) {
@@ -50,7 +50,7 @@ public struct SummaryCard: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .strokeBorder(.white.opacity(strokeOpacity), lineWidth: 1)
+                .strokeBorder(theme.glassBorder.opacity(strokeOpacity / 0.2), lineWidth: 1)
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.12),
                 radius: 12, x: 0, y: 6)
@@ -87,12 +87,13 @@ private struct HeaderLabel: View {
 
 private struct InsightPage: View {
     let text: String
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Text(text)
             .font(.custom("Sora-SemiBold", size: 24, relativeTo: .title))
             .lineSpacing(0) // Line height of 1 (no extra spacing)
-            .foregroundStyle(.white)
+            .foregroundStyle(theme.overlayText)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -103,16 +104,17 @@ private struct InsightPage: View {
 private struct ProgressSegments: View {
     let current: Int
     let total: Int
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 16) {
             ForEach(0..<max(total, 1), id: \.self) { i in
                 Capsule(style: .continuous)
-                    .fill(i == current ? .white : .white.opacity(0.35))
+                    .fill(i == current ? theme.overlayText : theme.overlayTextSecondary.opacity(0.5))
                     .frame(height: 6)
                     .overlay(
                         Capsule(style: .continuous)
-                            .stroke(.white.opacity(0.25), lineWidth: 0.5)
+                            .stroke(theme.glassBorder, lineWidth: 0.5)
                     )
                     .frame(maxWidth: .infinity)
             }

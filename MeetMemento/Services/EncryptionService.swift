@@ -3,37 +3,60 @@
 //  MeetMemento
 //
 //  Handles PIN-based encryption for journal content using AES-GCM.
-//  Derives encryption keys from the user's PIN using HKDF.
+//  Derives encryption keys from the user's PIN using PBKDF2.
 //
 
 import CryptoKit
 import Foundation
 import Security
+import CommonCrypto
 
 class EncryptionService {
     static let shared = EncryptionService()
 
     private let saltKeychainKey = "com.sebastianmendo.MeetMemento.encryptionSalt"
     private let saltLength = 32 // 256 bits
+    private let pbkdf2Iterations: UInt32 = 100_000 // OWASP recommended minimum
+    private let derivedKeyLength = 32 // 256 bits for AES-256
 
     private init() {}
 
     // MARK: - Key Derivation
 
-    /// Derives a 256-bit encryption key from PIN using HKDF with stored salt
+    /// Derives a 256-bit encryption key from PIN using PBKDF2-SHA256 with stored salt
+    /// Uses 100,000 iterations as recommended by OWASP for password-based key derivation
     func deriveKey(from pin: String) -> SymmetricKey? {
         guard let salt = getOrCreateSalt(),
               let pinData = pin.data(using: .utf8) else {
             return nil
         }
 
-        // Combine PIN and salt, then use SHA256 for key derivation
-        // This is a simplified key derivation - for production consider PBKDF2 via CommonCrypto
-        var combined = pinData
-        combined.append(salt)
+        // Use PBKDF2-SHA256 for secure key derivation
+        var derivedKeyData = Data(count: derivedKeyLength)
+        let derivationStatus = derivedKeyData.withUnsafeMutableBytes { derivedKeyBytes in
+            pinData.withUnsafeBytes { pinBytes in
+                salt.withUnsafeBytes { saltBytes in
+                    CCKeyDerivationPBKDF(
+                        CCPBKDFAlgorithm(kCCPBKDF2),
+                        pinBytes.baseAddress?.assumingMemoryBound(to: Int8.self),
+                        pinData.count,
+                        saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        salt.count,
+                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                        pbkdf2Iterations,
+                        derivedKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        derivedKeyLength
+                    )
+                }
+            }
+        }
 
-        let hash = SHA256.hash(data: combined)
-        return SymmetricKey(data: hash)
+        guard derivationStatus == kCCSuccess else {
+            print("PBKDF2 key derivation failed with status: \(derivationStatus)")
+            return nil
+        }
+
+        return SymmetricKey(data: derivedKeyData)
     }
 
     // MARK: - Encryption/Decryption

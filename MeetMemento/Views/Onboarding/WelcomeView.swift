@@ -55,6 +55,7 @@ public struct WelcomeView: View {
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
+                        .accessibilityIdentifier("welcome.headline")
 
                     Spacer()
 
@@ -62,6 +63,7 @@ public struct WelcomeView: View {
                     authButtonsSection
                         .padding(.horizontal, 24)
                 }
+                .accessibilityIdentifier("welcome.root")
             }
         }
         .useTypography()
@@ -90,6 +92,7 @@ public struct WelcomeView: View {
                 .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
             }
+            .accessibilityIdentifier("welcome.continueApple")
             .disabled(isAppleLoading || isGoogleLoading)
             .opacity((isAppleLoading || isGoogleLoading) ? 0.7 : 1.0)
 

@@ -20,14 +20,30 @@ class LockScreenViewModel: ObservableObject {
     @Published var showPINFallback: Bool = false
     @Published var biometricFailureCount: Int = 0
 
+    /// Flag to skip lock screen immediately after onboarding completion
+    @Published var skipNextLockScreen: Bool = false
+
     private let securityService = SecurityService.shared
 
-    /// Whether the lock screen should be shown based on security mode and lock state.
-    var shouldShowLockScreen: Bool {
-        guard securityService.currentMode != .none else {
-            return false
+    /// Call this before checking `shouldShowLockScreen` to handle the skip-after-onboarding case.
+    /// This consumes the `skipNextLockScreen` flag and unlocks if needed.
+    func consumeSkipNextLockScreen() {
+        if skipNextLockScreen {
+            skipNextLockScreen = false
+            isLocked = false
         }
+    }
+
+    /// Whether the lock screen should be shown based on security mode and lock state.
+    /// Note: Call `consumeSkipNextLockScreen()` before accessing this property.
+    var shouldShowLockScreen: Bool {
+        guard hasSecuritySetup else { return false }
         return isLocked
+    }
+
+    /// Whether security is set up (either FaceID or PIN).
+    var hasSecuritySetup: Bool {
+        securityService.currentMode != .none
     }
 
     /// Whether PIN fallback is available (PIN is set up).

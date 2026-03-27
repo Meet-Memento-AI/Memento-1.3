@@ -353,6 +353,13 @@ public struct JournalView: View {
             }
             .toolbar(.hidden, for: .tabBar)
             .environment(\.fabVisible, false)
+        case .createWithContent(let prefillTitle, let prefillContent):
+            AddEntryView(state: .createWithContent(title: prefillTitle, content: prefillContent)) { title, text in
+                entryViewModel.createEntry(title: title, text: text)
+                navigationPath.wrappedValue.removeLast()
+            }
+            .toolbar(.hidden, for: .tabBar)
+            .environment(\.fabVisible, false)
         case .edit(let entry):
             AddEntryView(state: .edit(entry)) { title, text in
                 var updated = entry

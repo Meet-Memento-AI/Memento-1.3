@@ -232,6 +232,7 @@ public struct TopTabNavContainer<Content: View>: View {
                     floatingPillsOverlay(safeAreaTop: geometry.safeAreaInsets.top)
                 }
             }
+            .ignoresSafeArea(edges: .all)
         }
         .ignoresSafeArea(edges: .all)
     }
@@ -267,6 +268,8 @@ public struct SwipeableTabView<Content: View>: View {
     @Binding public var swipeProgress: CGFloat
     public let content: (JournalTopTab) -> Content
 
+    @Environment(\.theme) private var theme
+
     public init(
         selection: Binding<JournalTopTab>,
         swipeProgress: Binding<CGFloat> = .constant(0),
@@ -284,6 +287,9 @@ public struct SwipeableTabView<Content: View>: View {
             TabView(selection: $selection) {
                 ForEach(JournalTopTab.allCases) { tab in
                     content(tab)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .ignoresSafeArea(edges: .all)
                         .tag(tab)
                         .background(
                             // Track position of the first tab to calculate swipe progress
@@ -302,9 +308,11 @@ public struct SwipeableTabView<Content: View>: View {
                         )
                 }
             }
+            .background(theme.background)
             #if os(iOS)
             .tabViewStyle(.page(indexDisplayMode: .never))
             #endif
+            .ignoresSafeArea()
             .onPreferenceChange(SwipeProgressPreferenceKey.self) { progress in
                 swipeProgress = progress
             }
@@ -312,6 +320,8 @@ public struct SwipeableTabView<Content: View>: View {
                 triggerHaptic()
             }
         }
+        .background(theme.background.ignoresSafeArea())
+        .ignoresSafeArea(edges: .all)
     }
 
     /// Calculate swipe progress from 0 (Journal) to 1 (Insights)

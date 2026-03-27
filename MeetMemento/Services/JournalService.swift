@@ -2,11 +2,103 @@
 import Foundation
 import Supabase
 
+// MARK: - Network Retry Configuration
+
+private struct RetryConfig {
+    let maxAttempts: Int
+    let baseDelayMs: UInt64
+    let maxDelayMs: UInt64
+
+    static let `default` = RetryConfig(
+        maxAttempts: 3,
+        baseDelayMs: 500,
+        maxDelayMs: 4000
+    )
+}
+
 class JournalService {
     static let shared = JournalService()
 
     private var client: SupabaseClient {
         SupabaseService.shared.client
+    }
+
+    // MARK: - Retry Helper
+
+    /// Executes an async operation with exponential backoff retry for transient failures
+    private func withRetry<T>(
+        config: RetryConfig = .default,
+        operation: () async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+        var currentDelay = config.baseDelayMs
+
+        for attempt in 1...config.maxAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+
+                // Check if error is retryable
+                let isRetryable = isTransientError(error)
+
+                #if DEBUG
+                print("⚠️ [JournalService] Attempt \(attempt)/\(config.maxAttempts) failed: \(error.localizedDescription)")
+                print("   Retryable: \(isRetryable)")
+                #endif
+
+                // Don't retry on final attempt or non-transient errors
+                if attempt == config.maxAttempts || !isRetryable {
+                    break
+                }
+
+                // Exponential backoff with jitter
+                let jitter = UInt64.random(in: 0...100)
+                let delay = min(currentDelay + jitter, config.maxDelayMs)
+
+                #if DEBUG
+                print("   Retrying in \(delay)ms...")
+                #endif
+
+                try await Task.sleep(nanoseconds: delay * 1_000_000)
+                currentDelay = min(currentDelay * 2, config.maxDelayMs)
+            }
+        }
+
+        throw lastError ?? NSError(
+            domain: "JournalService",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "Unknown error after retries"]
+        )
+    }
+
+    /// Determines if an error is transient and should be retried
+    private func isTransientError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+
+        // URL session errors that are transient
+        let transientURLErrors: Set<Int> = [
+            NSURLErrorTimedOut,
+            NSURLErrorCannotFindHost,
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorNetworkConnectionLost,
+            NSURLErrorDNSLookupFailed,
+            NSURLErrorNotConnectedToInternet,
+            NSURLErrorSecureConnectionFailed,
+            -1001, // kCFURLErrorTimedOut
+            -1009  // kCFURLErrorNotConnectedToInternet
+        ]
+
+        if nsError.domain == NSURLErrorDomain && transientURLErrors.contains(nsError.code) {
+            return true
+        }
+
+        // HTTP 5xx errors and 429 (rate limit) are retryable
+        if let httpCode = (error as? URLError)?.errorCode {
+            return httpCode >= 500 || httpCode == 429
+        }
+
+        return false
     }
 
     /// Fetches all non-deleted journal entries for the current user, ordered by creation date (newest first).
@@ -15,14 +107,16 @@ class JournalService {
             return []
         }
 
-        let response: [JournalEntryDTO] = try await client
-            .from("journal_entries")
-            .select()
-            .eq("user_id", value: userId)
-            .eq("is_deleted", value: false)
-            .order("created_at", ascending: false)
-            .execute()
-            .value
+        let response: [JournalEntryDTO] = try await withRetry {
+            try await self.client
+                .from("journal_entries")
+                .select()
+                .eq("user_id", value: userId)
+                .eq("is_deleted", value: false)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+        }
 
         return response.compactMap { $0.toDomain() }
     }
@@ -31,12 +125,14 @@ class JournalService {
     @discardableResult
     func createEntry(_ entry: JournalEntry) async throws -> JournalEntry {
         let dto = JournalEntryDTO(from: entry)
-        let response: [JournalEntryDTO] = try await client
-            .from("journal_entries")
-            .insert(dto)
-            .select()
-            .execute()
-            .value
+        let response: [JournalEntryDTO] = try await withRetry {
+            try await self.client
+                .from("journal_entries")
+                .insert(dto)
+                .select()
+                .execute()
+                .value
+        }
 
         guard let createdDTO = response.first, let created = createdDTO.toDomain() else {
             throw NSError(domain: "JournalService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse created entry"])
@@ -64,12 +160,14 @@ class JournalService {
         }
 
         let dto = JournalEntryDTO(from: entry)
-        try await client
-            .from("journal_entries")
-            .update(dto)
-            .eq("id", value: entry.id)
-            .eq("user_id", value: userId)
-            .execute()
+        _ = try await withRetry {
+            try await self.client
+                .from("journal_entries")
+                .update(dto)
+                .eq("id", value: entry.id)
+                .eq("user_id", value: userId)
+                .execute()
+        }
 
         // Trigger embedding regeneration (fire-and-forget)
         Task {
@@ -102,12 +200,14 @@ class JournalService {
 
         let updatePayload = SoftDeleteUpdate(is_deleted: true, deleted_at: dateString)
 
-        try await client
-            .from("journal_entries")
-            .update(updatePayload)
-            .eq("id", value: id)
-            .eq("user_id", value: userId)
-            .execute()
+        _ = try await withRetry {
+            try await self.client
+                .from("journal_entries")
+                .update(updatePayload)
+                .eq("id", value: id)
+                .eq("user_id", value: userId)
+                .execute()
+        }
 
         // Also delete local encrypted content
         LocalJournalStorage.shared.deleteEncrypted(entryId: id)

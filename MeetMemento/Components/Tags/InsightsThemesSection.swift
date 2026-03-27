@@ -4,6 +4,7 @@ import SwiftUI
 public struct InsightsThemesSection: View {
     public let themes: [String]
 
+    @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
     public init(themes: [String]) {
@@ -16,11 +17,11 @@ public struct InsightsThemesSection: View {
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Text("Your Themes")
                     .font(type.h6)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
             }
 
             // Wrapping tags
@@ -120,8 +121,8 @@ private struct InsightsTagFlowLayout<Content: View>: View {
         // Purple gradient background to match Insights view
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(hex: "#411976"),
-                Color(hex: "#57219C")
+                PrimaryScale.primary800,
+                PrimaryScale.primary700
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing

@@ -36,19 +36,19 @@ public struct MonthlyInsightCard: View {
                     Text(month)
                         .font(type.h5)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.overlayText)
 
                     Spacer()
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(theme.overlayTextSecondary)
                 }
 
                 // Summary text
                 Text(summary)
                     .font(type.body1)
-                    .foregroundStyle(.white.opacity(Spacing.Opacity.muted))
+                    .foregroundStyle(theme.overlayTextSecondary)
                     .lineLimit(4)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -77,8 +77,8 @@ public struct MonthlyInsightCard: View {
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            .white.opacity(Spacing.Opacity.border),
-                            .white.opacity(0.05)
+                            theme.glassBorder,
+                            theme.glassBorder.opacity(0.25)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -111,21 +111,21 @@ public struct MonthlyInsightCard: View {
         HStack(spacing: 6) {
             Image(systemName: "square.and.pencil")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.overlayText)
 
             Text("\(entryCount) \(entryCount == 1 ? "entry" : "entries")")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.overlayText)
         }
         .hPadding(Spacing.sm)
         .vPadding(Spacing.xs)
         .background(
             Capsule()
-                .fill(.white.opacity(Spacing.Opacity.overlay))
+                .fill(theme.glassBorder)
         )
         .overlay(
             Capsule()
-                .stroke(.white.opacity(Spacing.Opacity.subtle), lineWidth: 1)
+                .stroke(theme.glassBorder, lineWidth: 1)
         )
     }
 

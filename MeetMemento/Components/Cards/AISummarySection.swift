@@ -6,6 +6,7 @@ public struct AISummarySection: View {
     public let title: String
     public let bodyText: String
 
+    @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
     public init(title: String, body: String) {
@@ -19,11 +20,11 @@ public struct AISummarySection: View {
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Text("YOUR AI SUMMARY")
                     .font(type.h6)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
             }
 
             // Main content
@@ -31,14 +32,14 @@ public struct AISummarySection: View {
                 // Title (max 4 lines)
                 Text(title)
                     .font(type.h2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
                     .lineLimit(5)
                     .multilineTextAlignment(.leading)
 
                 // Body paragraph (max 300 words)
                 Text(bodyText)
                     .font(type.body1)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(theme.overlayTextSecondary)
                     .multilineTextAlignment(.leading)
             }
         }
@@ -52,8 +53,8 @@ public struct AISummarySection: View {
         // Purple gradient background to match Insights view
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(hex: "#411976"),
-                Color(hex: "#57219C")
+                PrimaryScale.primary800,
+                PrimaryScale.primary700
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing

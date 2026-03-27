@@ -7,11 +7,25 @@
 // via pgvector, builds a prompt with that context, calls Gemini
 // 2.5 Flash, persists the conversation, and returns the response.
 //
+// System prompt: ./MEMENTO_SYSTEM_PROMPT.md (see docs/prompts/MEMENTO_SYSTEM_PROMPT.md).
+// Optional explicit context caching: https://ai.google.dev/gemini-api/docs/caching
+// Env: GEMINI_API_KEY (required), GEMINI_SYSTEM_CACHE_NAME (optional cachedContents/... id).
+//
 // Deploy: supabase functions deploy chat
 //
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  buildContextBlock,
+  buildGeminiContents,
+  cleanParsedBody,
+  extractBody,
+  extractGeminiResponseText,
+  sanitizeResponseBody,
+  type MatchedEntry,
+  type ChatMessageRow,
+} from './lib.ts';
 
 // ============================================================
 // CONFIGURATION
@@ -29,40 +43,16 @@ const GEMINI_EMBEDDING_URL =
 const GEMINI_CHAT_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-const SYSTEM_PROMPT = `You are Memento, a thoughtful AI companion who knows the user through their journal entries. You help them reflect on their experiences and notice patterns in their life.
+const GEMINI_CACHED_CONTENTS_URL =
+  'https://generativelanguage.googleapis.com/v1beta/cachedContents';
 
-Be warm and conversational, like a trusted friend who happens to have a great memory. Reference journal entries naturally when relevant — say things like "A couple weeks ago you wrote about..." rather than citing entry IDs or dates mechanically.
+/** Source of truth on disk: ./MEMENTO_SYSTEM_PROMPT.md (duplicate of docs/prompts/MEMENTO_SYSTEM_PROMPT.md). */
+const SYSTEM_PROMPT_PATH = new URL('./MEMENTO_SYSTEM_PROMPT.md', import.meta.url);
 
-If the user asks about something their journal entries don't cover, say so honestly: "I don't see anything about that in your journal yet."
+/** In-memory cache resource name for explicit context caching (see https://ai.google.dev/gemini-api/docs/caching). */
+let geminiSystemCacheName: string | null | undefined = undefined;
 
-Never invent or assume journal content that wasn't provided to you in the context.
-
-Keep responses to 2-3 paragraphs. Write in natural, flowing paragraphs. End with one follow-up question to encourage deeper reflection.
-
-If the user seems distressed, be supportive and suggest they talk to someone they trust.
-
-## Response Format
-Return a JSON object:
-{
-  "heading1": "Primary heading (or null)",
-  "heading2": "Sub-heading (or null)",
-  "body": "Your main response"
-}
-
-### When to use headings:
-- USE heading1 for multi-part questions, summaries, pattern analysis
-- USE heading2 for sub-sections within structured responses
-- DO NOT use headings for simple conversational responses
-- Most responses will only have a body
-
-Examples needing headings:
-- "What patterns do you see?" -> heading1: "Patterns in Your Entries"
-- "How have I been doing?" -> heading1: "Reflecting on Your Week"
-
-Examples NOT needing headings:
-- "Hi!" -> just body
-- "Thanks!" -> just body
-- "What did I write yesterday?" -> just body`;
+const SYSTEM_PROMPT_FALLBACK = `You are Memento, a journaling companion. Help users explore their journal entries with warmth and curiosity. Respond with JSON only: {"heading1":null,"heading2":null,"body":"..."} where body contains your reply. Never fabricate journal content.`;
 
 const MATCH_COUNT = 5;
 const MATCH_THRESHOLD = 0.3;
@@ -79,6 +69,153 @@ const RESPONSE_SCHEMA = {
   required: ["body"]
 };
 
+let cachedSystemPromptText: string | null = null;
+
+async function loadSystemPrompt(): Promise<string> {
+  if (cachedSystemPromptText) return cachedSystemPromptText;
+  try {
+    cachedSystemPromptText = await Deno.readTextFile(SYSTEM_PROMPT_PATH);
+    return cachedSystemPromptText;
+  } catch (e) {
+    console.warn('Failed to read MEMENTO_SYSTEM_PROMPT.md:', e);
+    cachedSystemPromptText = SYSTEM_PROMPT_FALLBACK;
+    return cachedSystemPromptText;
+  }
+}
+
+function logGeminiUsage(data: unknown): void {
+  const meta = (data as { usageMetadata?: Record<string, unknown> })?.usageMetadata;
+  if (meta && Object.keys(meta).length > 0) {
+    console.log('Gemini usage_metadata:', JSON.stringify(meta));
+  }
+}
+
+async function createGeminiSystemCache(
+  apiKey: string,
+  systemPromptText: string,
+): Promise<string | null> {
+  const body: Record<string, unknown> = {
+    model: 'models/gemini-2.5-flash',
+    displayName: 'memento-chat-system',
+    systemInstruction: {
+      role: 'system',
+      parts: [{ text: systemPromptText }],
+    },
+    ttl: '86400s',
+  };
+
+  const res = await fetch(`${GEMINI_CACHED_CONTENTS_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const t = await res.text();
+    console.warn(`Gemini cachedContents create failed (${res.status}): ${t.substring(0, 800)}`);
+    return null;
+  }
+
+  const json = (await res.json()) as { name?: string; usageMetadata?: Record<string, unknown> };
+  logGeminiUsage(json);
+  if (!json.name) return null;
+  console.log('✅ Gemini system prompt cache created:', json.name);
+  return json.name;
+}
+
+async function resolveSystemCacheName(apiKey: string, systemPromptText: string): Promise<string | null> {
+  const envName = Deno.env.get('GEMINI_SYSTEM_CACHE_NAME')?.trim();
+  if (envName) return envName;
+
+  if (geminiSystemCacheName === null) return null;
+  if (typeof geminiSystemCacheName === 'string') return geminiSystemCacheName;
+
+  const created = await createGeminiSystemCache(apiKey, systemPromptText);
+  geminiSystemCacheName = created;
+  return created;
+}
+
+type GeminiContent = Array<{ role: string; parts: Array<{ text: string }> }>;
+
+async function generateGeminiChat(
+  apiKey: string,
+  systemPromptText: string,
+  contents: GeminiContent,
+): Promise<{ ok: boolean; data?: unknown; errorText?: string }> {
+  const generationConfig = {
+    temperature: 0.7,
+    maxOutputTokens: 800,
+    responseMimeType: 'application/json',
+    responseSchema: RESPONSE_SCHEMA,
+  };
+
+  const tryWithCache = async (cacheName: string) => {
+    const res = await fetch(`${GEMINI_CHAT_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cachedContent: cacheName,
+        contents,
+        generationConfig,
+      }),
+    });
+    const errorText = res.ok ? undefined : await res.text();
+    const data = res.ok ? await res.json() : undefined;
+    if (res.ok && data) logGeminiUsage(data);
+    return { res, data, errorText };
+  };
+
+  let cacheName = await resolveSystemCacheName(apiKey, systemPromptText);
+
+  if (cacheName) {
+    let { res, data, errorText } = await tryWithCache(cacheName);
+
+    if (res.ok && data) {
+      return { ok: true, data };
+    }
+
+    const expired =
+      res.status === 404 ||
+      (errorText?.includes('NOT_FOUND') ?? false) ||
+      (errorText?.includes('not found') ?? false);
+    const usingEnvCache = Boolean(Deno.env.get('GEMINI_SYSTEM_CACHE_NAME')?.trim());
+    if (expired && !usingEnvCache) {
+      console.warn('Gemini cache miss or expired; recreating cache');
+      geminiSystemCacheName = undefined;
+      const newName = await createGeminiSystemCache(apiKey, systemPromptText);
+      geminiSystemCacheName = newName;
+      if (newName) {
+        ({ res, data, errorText } = await tryWithCache(newName));
+        if (res.ok && data) {
+          return { ok: true, data };
+        }
+      }
+    } else if (expired && usingEnvCache) {
+      console.warn('GEMINI_SYSTEM_CACHE_NAME expired or invalid; falling back to inline system_instruction');
+    }
+
+    console.warn('Gemini cached generateContent failed; falling back to inline system_instruction:', res.status, errorText?.substring(0, 400));
+  }
+
+  const res = await fetch(`${GEMINI_CHAT_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPromptText }] },
+      contents,
+      generationConfig,
+    }),
+  });
+
+  if (!res.ok) {
+    return { ok: false, errorText: await res.text() };
+  }
+
+  const data = await res.json();
+  logGeminiUsage(data);
+  return { ok: true, data };
+}
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -90,18 +227,6 @@ interface ChatRequest {
 
 interface GeminiEmbeddingResponse {
   embedding: { values: number[] };
-}
-
-interface MatchedEntry {
-  id: string;
-  content: string;
-  created_at: string;
-  similarity: number;
-}
-
-interface ChatMessageRow {
-  role: string;
-  content: string;
 }
 
 interface ChatSource {
@@ -269,60 +394,52 @@ serve(async (req) => {
 
     const geminiContents = buildGeminiContents(history, contextBlock, userMessage);
 
-    const geminiResponse = await fetch(`${GEMINI_CHAT_URL}?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: geminiContents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 800,
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-    });
+    const systemPrompt = await loadSystemPrompt();
+    const geminiResult = await generateGeminiChat(geminiApiKey, systemPrompt, geminiContents);
 
     let structuredReply: StructuredReply;
 
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      console.error(`Gemini API error ${geminiResponse.status}: ${errText}`);
+    if (!geminiResult.ok || !geminiResult.data) {
+      const errText = geminiResult.errorText ?? 'unknown error';
+      console.error(`Gemini API error: ${errText}`);
       structuredReply = {
         heading1: null,
         heading2: null,
         body: "I'm having trouble connecting right now. Please try again in a moment."
       };
     } else {
-      const geminiData = await geminiResponse.json();
-      const rawText =
-        geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ??
-        "I'm having trouble connecting right now. Please try again in a moment.";
+      const rawText = extractGeminiResponseText(geminiResult.data);
 
-      // Parse JSON response with fallback
+      // Debug logging: capture raw Gemini response for diagnosing fallback issues
+      console.log('Gemini raw response:', rawText.substring(0, 500));
+
+      // Parse JSON response with robust fallback
       try {
         const parsed = JSON.parse(rawText);
-        // Ensure body exists and is a non-empty string
-        if (typeof parsed.body === 'string' && parsed.body.trim()) {
-          // Use cleanParsedBody to handle nested JSON and sanitization
-          const cleanedBody = cleanParsedBody(parsed);
+
+        // Try multiple strategies to extract body
+        const extractedBody = extractBody(parsed);
+
+        if (extractedBody) {
+          // Clean up body (unwrap nested JSON if needed)
+          const cleanedBody = cleanParsedBody({ body: extractedBody });
           structuredReply = {
             heading1: parsed.heading1 || null,
             heading2: parsed.heading2 || null,
             body: cleanedBody
           };
         } else {
-          // JSON parsed but body is missing/empty - use fallback message
-          console.warn('Gemini response missing body field, using fallback');
+          // JSON parsed but no usable body found - log and use raw text as body
+          console.warn('No body extracted from parsed response:', JSON.stringify(parsed).substring(0, 300));
+          // Last resort: try to use the raw text itself if it doesn't look like JSON
           structuredReply = {
             heading1: null,
             heading2: null,
-            body: "I had trouble formulating a response. Please try again."
+            body: sanitizeResponseBody(rawText)
           };
         }
       } catch {
-        // JSON parsing failed - sanitize rawText to ensure no raw JSON leaks to users
+        // JSON parsing failed - sanitize rawText
         structuredReply = {
           heading1: null,
           heading2: null,
@@ -410,144 +527,9 @@ async function generateEmbedding(text: string, apiKey: string): Promise<number[]
   return values.length === 768 ? values : values.slice(0, 768);
 }
 
-function buildContextBlock(entries: MatchedEntry[]): string {
-  if (entries.length === 0) {
-    return '[No journal entries matched this topic]';
-  }
-
-  const formatted = entries.map((e) => {
-    const date = new Date(e.created_at);
-    const label = date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    return `[${label}] ${e.content}`;
-  });
-
-  return [
-    '[Journal context — reference these naturally, do not quote them verbatim]',
-    '',
-    ...formatted,
-    '',
-    '[End of journal context]',
-  ].join('\n');
-}
-
-function buildGeminiContents(
-  history: ChatMessageRow[],
-  contextBlock: string,
-  currentMessage: string
-): Array<{ role: string; parts: Array<{ text: string }> }> {
-  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-
-  for (const msg of history) {
-    let content = msg.content;
-
-    // For assistant messages, extract just the body to save tokens
-    if (msg.role === 'assistant') {
-      try {
-        const parsed = JSON.parse(msg.content);
-        if (parsed.body) {
-          content = parsed.body;
-        }
-      } catch {
-        // Not JSON (legacy message), use as-is
-      }
-    }
-
-    contents.push({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: content }],
-    });
-  }
-
-  // Current message with context prepended
-  contents.push({
-    role: 'user',
-    parts: [{ text: `${contextBlock}\n\n${currentMessage}` }],
-  });
-
-  return contents;
-}
-
 function jsonResponse(data: Record<string, unknown>, status: number): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-}
-
-/**
- * Sanitizes response body to ensure users never see raw JSON.
- * If text looks like JSON, tries to extract readable content or returns friendly fallback.
- */
-function sanitizeResponseBody(text: string): string {
-  const trimmed = text.trim();
-
-  // If text doesn't look like JSON, return as-is
-  if (!trimmed.startsWith('{')) {
-    return text;
-  }
-
-  // Try multiple patterns to extract body from JSON-like text
-  const patterns = [
-    /"body"\s*:\s*"((?:[^"\\]|\\.)*)"/,    // Standard JSON body
-    /"body"\s*:\s*'((?:[^'\\]|\\.)*)'/,     // Single quotes
-    /body:\s*["']([^"']+)["']/,             // Unquoted key
-  ];
-
-  for (const pattern of patterns) {
-    const match = trimmed.match(pattern);
-    if (match) {
-      return match[1]
-        .replace(/\\"/g, '"')
-        .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t');
-    }
-  }
-
-  // Last resort: return user-friendly error, never raw JSON
-  console.warn('sanitizeResponseBody: Could not extract body from JSON-like text');
-  return "I had trouble formulating a response. Could you try rephrasing your question?";
-}
-
-/**
- * Cleans parsed body by unwrapping nested JSON and sanitizing.
- * Guards against recursive JSON structures from Gemini.
- */
-function cleanParsedBody(parsed: { body?: unknown }): string {
-  let bodyText = parsed.body;
-
-  // Guard against nested JSON (recursive, max 3 attempts)
-  let attempts = 0;
-  while (
-    typeof bodyText === 'string' &&
-    bodyText.trim().startsWith('{') &&
-    attempts < 3
-  ) {
-    try {
-      const nested = JSON.parse(bodyText);
-      if (nested.body) {
-        bodyText = nested.body;
-      } else {
-        break;
-      }
-    } catch {
-      break;
-    }
-    attempts++;
-  }
-
-  // Final sanitization
-  if (typeof bodyText !== 'string' || !bodyText.trim()) {
-    return "I had trouble formulating a response. Please try again.";
-  }
-
-  // If after unwrapping we still have JSON-like text, sanitize it
-  if (bodyText.trim().startsWith('{')) {
-    return sanitizeResponseBody(bodyText);
-  }
-
-  return bodyText;
 }

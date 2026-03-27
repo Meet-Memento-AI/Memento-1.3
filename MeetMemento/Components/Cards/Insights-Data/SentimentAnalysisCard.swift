@@ -39,12 +39,12 @@ struct SentimentAnalysisCard: View {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .typographyBody2Bold()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Text("SENTIMENT ANALYSIS")
                     .typographyCaptionBold()
                     .tracking(0.5)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Spacer()
             }
@@ -76,7 +76,7 @@ struct SentimentAnalysisCard: View {
                         // Emotion label
                         Text(label)
                             .typographyBody1()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.overlayText)
 
                         Spacer()
 
@@ -84,7 +84,7 @@ struct SentimentAnalysisCard: View {
                         if showPercentages {
                             Text("\(percentage(for: emotionValues[index]))%")
                                 .typographyBody1()
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(theme.overlayTextSecondary)
                         }
                     }
                 }

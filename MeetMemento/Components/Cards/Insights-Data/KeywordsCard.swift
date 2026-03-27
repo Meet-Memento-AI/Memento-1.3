@@ -24,12 +24,12 @@ struct KeywordsCard: View {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(type.body2Bold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Text("KEYWORDS")
                     .font(type.captionBold)
                     .tracking(0.5)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.overlayText)
 
                 Spacer()
             }

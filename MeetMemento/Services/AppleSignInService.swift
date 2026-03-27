@@ -34,7 +34,7 @@ class AppleSignInService: NSObject, ObservableObject {
     /// Initiates Apple Sign In flow and returns credential data
     func signIn() async throws -> AppleSignInResult {
         // Generate cryptographic nonce
-        let nonce = generateNonce()
+        let nonce = try generateNonce()
         currentNonce = nonce
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -60,12 +60,13 @@ class AppleSignInService: NSObject, ObservableObject {
     // MARK: - Nonce Generation
 
     /// Generates a random string for use as a nonce
-    private func generateNonce(length: Int = 32) -> String {
+    /// - Throws: AppleSignInError.nonceGenerationFailed if secure random bytes cannot be generated
+    private func generateNonce(length: Int = 32) throws -> String {
         precondition(length > 0)
         var randomBytes = [UInt8](repeating: 0, count: length)
         let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
         if errorCode != errSecSuccess {
-            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+            throw AppleSignInError.nonceGenerationFailed(errorCode)
         }
 
         let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
@@ -156,6 +157,10 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
                     continuation?.resume(throwing: AppleSignInError.notInteractive)
                 case .matchedExcludedCredential:
                     continuation?.resume(throwing: AppleSignInError.matchedExcludedCredential)
+                case .credentialImport, .credentialExport,
+                     .preferSignInWithApple, .deviceNotConfiguredForPasskeyCreation:
+                    // These are passkey-related errors not applicable to Sign in with Apple
+                    continuation?.resume(throwing: AppleSignInError.failed)
                 @unknown default:
                     continuation?.resume(throwing: error)
                 }
@@ -188,6 +193,7 @@ enum AppleSignInError: LocalizedError {
     case invalidCredential
     case missingIdentityToken
     case missingNonce
+    case nonceGenerationFailed(OSStatus)
     case canceled
     case failed
     case invalidResponse
@@ -204,6 +210,8 @@ enum AppleSignInError: LocalizedError {
             return "Apple identity token is missing"
         case .missingNonce:
             return "Security nonce is missing"
+        case .nonceGenerationFailed(let status):
+            return "Failed to generate secure nonce (OSStatus: \(status))"
         case .canceled:
             return "Sign in was canceled"
         case .failed:

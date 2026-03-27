@@ -1,0 +1,33 @@
+name: iOS and chat helper tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  ios-unit-ui:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test (simulator)
+        run: |
+          xcodebuild \
+            -scheme MeetMemento \
+            -destination "platform=iOS Simulator,name=iPhone 16" \
+            -resultBundlePath TestResults \
+            test
+
+  deno-chat-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno test (chat lib)
+        working-directory: supabase/functions/chat
+        run: deno test --allow-read --allow-net lib_test.ts

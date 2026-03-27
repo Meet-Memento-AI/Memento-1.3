@@ -159,10 +159,39 @@ class SecurityService {
         return String(data: data, encoding: .utf8)
     }
 
-    /// Validates a PIN against the stored value.
+    /// Validates a PIN against the stored value using constant-time comparison
+    /// to prevent timing attacks.
     func validatePIN(_ pin: String) -> Bool {
         guard let stored = getPIN() else { return false }
-        return stored == pin
+        return constantTimeCompare(stored, pin)
+    }
+
+    /// Performs a constant-time string comparison to prevent timing attacks.
+    /// Returns true only if both strings are equal in length and content.
+    private func constantTimeCompare(_ a: String, _ b: String) -> Bool {
+        let aBytes = Array(a.utf8)
+        let bBytes = Array(b.utf8)
+
+        // Length check must still happen, but we continue comparison
+        // to avoid leaking length information through timing
+        guard aBytes.count == bBytes.count else {
+            // Still do a dummy comparison to maintain constant time
+            var result: UInt8 = 1 // Start with non-zero to indicate failure
+            for i in 0..<max(aBytes.count, bBytes.count) {
+                let aVal = i < aBytes.count ? aBytes[i] : 0
+                let bVal = i < bBytes.count ? bBytes[i] : 0
+                result |= aVal ^ bVal
+            }
+            return false
+        }
+
+        // XOR all bytes and accumulate - runs in constant time
+        var result: UInt8 = 0
+        for i in 0..<aBytes.count {
+            result |= aBytes[i] ^ bBytes[i]
+        }
+
+        return result == 0
     }
 
     /// Removes the stored PIN from the Keychain.

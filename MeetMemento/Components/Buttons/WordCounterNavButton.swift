@@ -93,14 +93,14 @@ public struct WordCounterNavButton: View {
 
     private var emptyStateIcon: some View {
         Image(systemName: "checkmark.circle")
-            .font(.system(size: min(buttonSize * 0.9, 22), weight: .regular))
+            .font(.system(size: buttonSize * 0.6, weight: .regular))
             .foregroundStyle(theme.mutedForeground.opacity(0.5))
             .transition(.opacity.combined(with: .scale(scale: 0.8)))
     }
 
     private var completedStateIcon: some View {
         Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: min(buttonSize * 0.9, 22), weight: .medium))
+            .font(.system(size: buttonSize * 0.6, weight: .medium))
             .foregroundStyle(theme.primary)
             .transition(.scale(scale: 0.8).combined(with: .opacity))
     }
@@ -109,24 +109,24 @@ public struct WordCounterNavButton: View {
         ZStack {
             // Subtle track ring
             Circle()
-                .stroke(theme.border.opacity(0.6), lineWidth: 1)
+                .stroke(theme.border.opacity(0.6), lineWidth: 1.5)
 
             // Progress arc
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
                     theme.primary.opacity(0.8),
-                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
                 .animation(.spring(response: 0.4, dampingFraction: 0.7), value: progress)
 
             Text("\(characterCount)")
-                .font(.system(size: min(buttonSize * 0.35, 12), weight: .semibold, design: .rounded))
+                .font(.system(size: buttonSize * 0.35, weight: .semibold, design: .rounded))
                 .foregroundStyle(theme.foreground)
                 .transition(.opacity.combined(with: .scale(scale: 0.8)))
         }
-        .padding(6)
+        .padding(4)
     }
 
     // MARK: - Accessibility

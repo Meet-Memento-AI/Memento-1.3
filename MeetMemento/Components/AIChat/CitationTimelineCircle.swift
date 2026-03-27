@@ -33,6 +33,6 @@ struct CitationTimelineCircle: View {
         CitationTimelineCircle(diameter: 12)
     }
     .padding()
-    .background(Color(.systemBackground))
+    .background(BaseColors.white)
     .useTheme()
 }

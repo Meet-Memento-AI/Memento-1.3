@@ -11,6 +11,7 @@ import SwiftUI
 public struct InsightAnnotationsSection: View {
     let annotations: [InsightAnnotation]
     @State private var selectedAnnotation: InsightAnnotation?
+    @Environment(\.theme) private var theme
 
     public init(annotations: [InsightAnnotation]) {
         self.annotations = annotations
@@ -23,11 +24,11 @@ public struct InsightAnnotationsSection: View {
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(theme.overlayTextSecondary)
 
                     Text("Timeline")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.overlayText)
                 }
 
                 // Annotations - horizontally wrapped, tappable
@@ -53,6 +54,7 @@ public struct InsightAnnotationsSection: View {
 private struct AnnotationDetailSheet: View {
     let annotation: InsightAnnotation
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     var body: some View {
         NavigationView {
@@ -61,18 +63,18 @@ private struct AnnotationDetailSheet: View {
                 Text(formattedDate)
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.black)
+                    .foregroundColor(theme.foreground)
 
                 // Summary paragraph
                 if !annotation.summary.isEmpty {
                     Text(annotation.summary)
                         .font(.body)
-                        .foregroundColor(.black.opacity(0.8))
+                        .foregroundColor(theme.foreground.opacity(0.8))
                         .lineSpacing(6)
                 } else {
                     Text("No details available for this date.")
                         .font(.body)
-                        .foregroundColor(.black.opacity(0.6))
+                        .foregroundColor(theme.mutedForeground)
                         .italic()
                 }
 
@@ -80,14 +82,14 @@ private struct AnnotationDetailSheet: View {
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemBackground))
+            .background(theme.background)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Close") {
                         dismiss()
                     }
-                    .foregroundColor(.black)
+                    .foregroundColor(theme.foreground)
                 }
             }
         }

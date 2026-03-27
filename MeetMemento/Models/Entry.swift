@@ -50,10 +50,36 @@ extension Entry {
 // MARK: - Sample Data for Previews
 
 extension Entry {
-    public static let sampleEntries: [Entry] = [
-        Entry(title: "Morning Thoughts", text: "Today was a productive day..."),
-        Entry(title: "Evening Reflection", text: "I learned something new today...")
-    ]
+    /// January 1st, 2026 date for sample entries
+    private static func makeJan2026Date() -> Date {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 1
+        components.day = 1
+        return Calendar.current.date(from: components) ?? Date()
+    }
+
+    /// Sample entries for previews and mock data - computed to avoid static initialization issues
+    public static var sampleEntries: [Entry] {
+        let jan2026 = makeJan2026Date()
+        return [
+            Entry(
+                title: "New Year Reflections",
+                text: "Starting 2026 with clarity and purpose. I've been thinking about what truly matters to me and how I want to spend my time this year. The fresh start feels invigorating.",
+                createdAt: jan2026
+            ),
+            Entry(
+                title: "Goals for the Year",
+                text: "This year I want to focus on personal growth, building deeper connections with friends and family, and taking better care of my mental health. Writing in this journal daily is my first step.",
+                createdAt: jan2026
+            ),
+            Entry(
+                title: "Morning Thoughts",
+                text: "Woke up feeling energized and ready to embrace the new year. There's something magical about January 1st - a clean slate, endless possibilities, and the motivation to be my best self.",
+                createdAt: jan2026
+            )
+        ]
+    }
 }
 
 // MARK: - Type Alias

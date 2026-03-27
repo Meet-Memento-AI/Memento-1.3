@@ -22,17 +22,23 @@ enum OnboardingRoute: Hashable {
 
 // MARK: - Onboarding Coordinator View
 
+@MainActor
 public struct OnboardingCoordinatorView: View {
     @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
     @EnvironmentObject var authViewModel: AuthViewModel
+    @ObservedObject var lockScreenViewModel: LockScreenViewModel
     @StateObject private var onboardingViewModel = OnboardingViewModel()
 
     @State private var navigationPath = NavigationPath()
     @State private var hasLoadedState = false
     @State private var hasMetMinimumLoadTime = false
+    @State private var showSaveError = false
+    @State private var saveErrorMessage: String?
 
-    public init() {}
+    init(lockScreenViewModel: LockScreenViewModel) {
+        self.lockScreenViewModel = lockScreenViewModel
+    }
 
     public var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -63,6 +69,14 @@ public struct OnboardingCoordinatorView: View {
                 hasLoadedState = true
                 await minimumLoadTask.value
             }
+        }
+        .alert("Unable to Save", isPresented: $showSaveError) {
+            Button("Try Again") {
+                // User can retry by tapping continue again
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "Please check your connection and try again.")
         }
     }
 
@@ -146,12 +160,11 @@ public struct OnboardingCoordinatorView: View {
         Task {
             do {
                 try await onboardingViewModel.saveProfileData()
+                navigationPath.append(OnboardingRoute.learnAboutYourself)
             } catch {
                 print("⚠️ Failed to save profile: \(error)")
-                onboardingViewModel.hasProfile = true
-            }
-            await MainActor.run {
-                navigationPath.append(OnboardingRoute.learnAboutYourself)
+                saveErrorMessage = "Failed to save your profile. Please try again."
+                showSaveError = true
             }
         }
     }
@@ -161,12 +174,11 @@ public struct OnboardingCoordinatorView: View {
         Task {
             do {
                 try await onboardingViewModel.savePersonalizationText()
+                navigationPath.append(OnboardingRoute.yourGoals)
             } catch {
                 print("⚠️ Failed to save personalization: \(error)")
-                onboardingViewModel.hasPersonalization = true
-            }
-            await MainActor.run {
-                navigationPath.append(OnboardingRoute.yourGoals)
+                saveErrorMessage = "Failed to save your preferences. Please try again."
+                showSaveError = true
             }
         }
     }
@@ -175,12 +187,11 @@ public struct OnboardingCoordinatorView: View {
         Task {
             do {
                 try await onboardingViewModel.saveGoals()
+                navigationPath.append(OnboardingRoute.faceID)
             } catch {
                 print("⚠️ Failed to save goals: \(error)")
-                onboardingViewModel.hasGoals = true
-            }
-            await MainActor.run {
-                navigationPath.append(OnboardingRoute.faceID)
+                saveErrorMessage = "Failed to save your goals. Please try again."
+                showSaveError = true
             }
         }
     }
@@ -206,7 +217,12 @@ public struct OnboardingCoordinatorView: View {
         // Store confirmed PIN in Keychain
         let pin = onboardingViewModel.confirmedPin
         if !pin.isEmpty {
-            _ = SecurityService.shared.savePIN(pin)
+            let saved = SecurityService.shared.savePIN(pin)
+            if !saved {
+                // Log error but continue - security mode will still be set
+                // User can reset PIN later if needed
+                print("⚠️ Failed to save PIN to Keychain")
+            }
             // Only set to PIN mode if user chose PIN-only (not FaceID backup)
             // FaceID users already have their mode set in handleUseFaceID()
             if !onboardingViewModel.useFaceID {
@@ -250,12 +266,16 @@ public struct OnboardingCoordinatorView: View {
             do {
                 try await onboardingViewModel.completeOnboarding()
                 await MainActor.run {
+                    // Skip lock screen on first launch after onboarding
+                    // User just set up security, no need to immediately prompt again
+                    lockScreenViewModel.skipNextLockScreen = true
                     authViewModel.hasCompletedOnboarding = true
                     authViewModel.clearPendingProfile()
                 }
             } catch {
                 print("⚠️ Failed to mark onboarding complete: \(error)")
                 await MainActor.run {
+                    lockScreenViewModel.skipNextLockScreen = true
                     authViewModel.hasCompletedOnboarding = true
                 }
             }
@@ -266,6 +286,6 @@ public struct OnboardingCoordinatorView: View {
 // MARK: - Previews
 
 #Preview("Onboarding Flow") {
-    OnboardingCoordinatorView()
+    OnboardingCoordinatorView(lockScreenViewModel: LockScreenViewModel())
         .environmentObject(AuthViewModel())
 }

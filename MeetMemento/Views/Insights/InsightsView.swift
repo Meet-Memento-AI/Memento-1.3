@@ -15,6 +15,7 @@ import SwiftUI
 public struct InsightsView: View {
     @EnvironmentObject var entryViewModel: EntryViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var chatViewModel = ChatViewModel()
 
     @State private var navigationPath = NavigationPath()
 
@@ -160,7 +161,7 @@ public struct InsightsView: View {
                 .navigationDestination(for: AIChatRoute.self) { route in
                     switch route {
                     case .main:
-                        AIChatView()
+                        AIChatView(viewModel: chatViewModel)
                             .toolbar(.hidden, for: .tabBar)
                             .environment(\.fabVisible, false)
                     }
@@ -325,6 +326,14 @@ public struct InsightsView: View {
             .environment(\.fabVisible, false)
         case .createWithTitle(let prefillTitle):
             AddEntryView(state: .createWithTitle(prefillTitle)) { title, text in
+                entryViewModel.createEntry(title: title, text: text)
+                selectedTab?.wrappedValue = .yourEntries
+                navigationPath.removeLast()
+            }
+            .toolbar(.hidden, for: .tabBar)
+            .environment(\.fabVisible, false)
+        case .createWithContent(let prefillTitle, let prefillContent):
+            AddEntryView(state: .createWithContent(title: prefillTitle, content: prefillContent)) { title, text in
                 entryViewModel.createEntry(title: title, text: text)
                 selectedTab?.wrappedValue = .yourEntries
                 navigationPath.removeLast()

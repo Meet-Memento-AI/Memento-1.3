@@ -137,7 +137,7 @@ public struct PositionedNewEntryFAB: View {
 
 #Preview("Dark") {
     ZStack {
-        Color(hex: "#1C2329").ignoresSafeArea()
+        GrayScale.gray900.ignoresSafeArea()
         VStack { Spacer(); HStack { Spacer(); NewEntryFAB { }.padding(20) } }
     }
     .useTheme().useTypography().preferredColorScheme(.dark)

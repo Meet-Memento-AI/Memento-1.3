@@ -44,7 +44,21 @@ struct JournalCard: View {
                 .hPadding(Spacing.lg)
                 .vPadding(Spacing.md)
         }
-        .cardStyle(radius: 24, border: false, shadow: false, backgroundColor: theme.secondary)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [GrayScale.gray100, GrayScale.gray50],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(theme.cardBackground, lineWidth: 1.5)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
         .pressEffect(isPressed: $isPressed, scale: 0.98, duration: Spacing.Duration.fast)
         .contentShape(Rectangle())
         .onTapGesture {
@@ -173,7 +187,7 @@ private struct JournalCardHarness: View {
         )
         .previewLayout(.sizeThatFits)
         .frame(maxWidth: .infinity) // allow card to stretch
-        .background(Color(uiColor: .systemBackground))
+        .background(BaseColors.white)
         .useTheme()
         .useTypography()
     }

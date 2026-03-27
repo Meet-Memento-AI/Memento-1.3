@@ -10,6 +10,7 @@ import SwiftUI
 
 public struct TopNavHeader: View {
     @Binding var selection: JournalTopTab
+    var hasActiveChat: Bool
     var onMenuTapped: () -> Void
     var onActionTapped: () -> Void
 
@@ -18,10 +19,12 @@ public struct TopNavHeader: View {
 
     public init(
         selection: Binding<JournalTopTab>,
+        hasActiveChat: Bool = false,
         onMenuTapped: @escaping () -> Void,
         onActionTapped: @escaping () -> Void
     ) {
         self._selection = selection
+        self.hasActiveChat = hasActiveChat
         self.onMenuTapped = onMenuTapped
         self.onActionTapped = onActionTapped
     }
@@ -49,21 +52,22 @@ public struct TopNavHeader: View {
 
             Spacer()
 
-            // Right action (context-aware: search for Journal, write entry for Insights)
+            // Right action (context-aware: search for Journal, summarize/write for Insights)
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 onActionTapped()
             }) {
-                Image(systemName: selection == .yourEntries ? "magnifyingglass" : "square.and.pencil")
+                Image(systemName: actionButtonIcon)
                     .font(.title2)
                     .fontWeight(.medium)
-                    .foregroundStyle(theme.foreground)
+                    .foregroundStyle(actionButtonForeground)
                     .frame(width: 44, height: 44)
                     .contentTransition(.symbolEffect(.replace))
-                    .background(iconButtonBackground)
+                    .background(actionButtonBackground)
             }
-            .accessibilityLabel(selection == .yourEntries ? "Search" : "New Entry")
+            .accessibilityLabel(actionButtonAccessibilityLabel)
             .animation(.smooth(duration: 0.3), value: selection)
+            .animation(.smooth(duration: 0.3), value: hasActiveChat)
         }
         .padding(.horizontal, 16)
     }
@@ -84,6 +88,51 @@ public struct TopNavHeader: View {
                     Circle()
                         .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
                 )
+        }
+    }
+
+    // MARK: - Action Button Styling
+
+    /// Icon for the right action button (context-aware)
+    private var actionButtonIcon: String {
+        if selection == .yourEntries {
+            return "magnifyingglass"
+        } else if hasActiveChat {
+            return "doc.text"
+        } else {
+            return "square.and.pencil"
+        }
+    }
+
+    /// Foreground color for the right action button
+    private var actionButtonForeground: Color {
+        if selection == .digDeeper && hasActiveChat {
+            return theme.primaryForeground
+        } else {
+            return theme.foreground
+        }
+    }
+
+    /// Background for the right action button
+    @ViewBuilder
+    private var actionButtonBackground: some View {
+        if selection == .digDeeper && hasActiveChat {
+            // Active chat state: purple filled circle
+            Circle()
+                .fill(PrimaryScale.primary600)
+        } else {
+            iconButtonBackground
+        }
+    }
+
+    /// Accessibility label for the right action button
+    private var actionButtonAccessibilityLabel: String {
+        if selection == .yourEntries {
+            return "Search"
+        } else if hasActiveChat {
+            return "Summarize Chat"
+        } else {
+            return "New Entry"
         }
     }
 }

@@ -1,0 +1,28 @@
+---
+description: When to add or update regression tests for MeetMemento
+globs:
+  - MeetMemento/**/*ChatViewModel*.swift
+  - MeetMemento/**/*ChatService*.swift
+  - MeetMemento/**/*AuthViewModel*.swift
+  - MeetMemento/**/*Onboarding*.swift
+  - supabase/functions/chat/**/*.ts
+---
+
+# Regression tests
+
+When you change **chat behavior**, **auth/onboarding flow**, or the **chat Edge Function**, add or update tests in the **same PR**.
+
+## Commands
+
+- **iOS (unit + UI):**  
+  `xcodebuild -scheme MeetMemento -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' test`  
+  If the destination is not found, pick an available iPhone simulator from `xcodebuild -showdestinations -scheme MeetMemento`.
+
+- **Chat pure helpers (Deno):**  
+  `cd supabase/functions/chat && deno test lib_test.ts`
+
+## Conventions
+
+- Prefer descriptive test names: `test_<Area>_<behavior>()`.
+- Use `ChatServiceProtocol` + `MockChatService` for `ChatViewModel` unit tests; avoid live network in unit tests.
+- For UI smoke tests, rely on stable `accessibilityIdentifier` values (e.g. `welcome.root`).

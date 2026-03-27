@@ -22,6 +22,12 @@ private struct TabBarHiddenKey: EnvironmentKey {
 private struct ShowAccessoryKey: EnvironmentKey {
     static let defaultValue: Binding<Bool>? = nil
 }
+private struct SelectedTabKey: EnvironmentKey {
+    static let defaultValue: Binding<JournalTopTab>? = nil
+}
+private struct FABVisibleKey: EnvironmentKey {
+    static let defaultValue: Bool = true
+}
 extension EnvironmentValues {
     var previewEntryViewModel: EntryViewModel? {
         get { self[PreviewEntryViewModelKey.self] }
@@ -38,6 +44,14 @@ extension EnvironmentValues {
     var showAccessory: Binding<Bool>? {
         get { self[ShowAccessoryKey.self] }
         set { self[ShowAccessoryKey.self] = newValue }
+    }
+    var selectedTab: Binding<JournalTopTab>? {
+        get { self[SelectedTabKey.self] }
+        set { self[SelectedTabKey.self] = newValue }
+    }
+    var fabVisible: Bool {
+        get { self[FABVisibleKey.self] }
+        set { self[FABVisibleKey.self] = newValue }
     }
 }
 
@@ -118,6 +132,8 @@ public struct ContentView: View {
     @State private var isTabBarHidden = false
     @State private var showAccessory = true
     @State private var showJournalSearch = false
+    @State private var showSummarySheet = false
+    @State private var summaryError: String?
 
     /// Consolidated navigation path for all routes
     @State private var navigationPath = NavigationPath()
@@ -128,7 +144,7 @@ public struct ContentView: View {
     private let drawerWidth: CGFloat = DrawerMenuView.drawerWidth
 
     @StateObject private var defaultEntryViewModel = EntryViewModel()
-    @StateObject private var chatViewModel = ChatViewModel()
+    @StateObject private var chatViewModel = ChatViewModel() 
     @Environment(\.previewEntryViewModel) private var previewEntryViewModel: EntryViewModel?
     @Environment(\.previewInitialTab) private var previewInitialTab: JournalTopTab?
 
@@ -219,6 +235,7 @@ public struct ContentView: View {
                     VStack {
                         TopNavHeader(
                             selection: $selectedTab,
+                            hasActiveChat: chatViewModel.hasActiveChat,
                             onMenuTapped: {
                                 // Toggle drawer
                                 if isDrawerOpen {
@@ -228,14 +245,18 @@ public struct ContentView: View {
                                 }
                             },
                             onActionTapped: {
-                                // Context-aware action: search for Journal, new entry for Insights
+                                // Context-aware action: search for Journal, summarize/new entry for Insights
                                 if selectedTab == .yourEntries {
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                         showJournalSearch = true
                                     }
                                 } else {
-                                    // Create new journal entry from Insights tab
-                                    navigationPath.append(EntryRoute.create)
+                                    // Show summary sheet if active chat, otherwise create new entry
+                                    if chatViewModel.hasActiveChat {
+                                        showSummarySheet = true
+                                    } else {
+                                        navigationPath.append(EntryRoute.create)
+                                    }
                                 }
                             }
                         )
@@ -324,6 +345,37 @@ public struct ContentView: View {
             if newPhase == .background || newPhase == .inactive {
                 entryViewModel.clearSessionPIN()
             }
+        }
+        .sheet(isPresented: $showSummarySheet) {
+            ChatSummarySheet(
+                onSummarize: {
+                    Task {
+                        do {
+                            let summary = try await chatViewModel.generateChatSummary()
+                            await MainActor.run {
+                                showSummarySheet = false
+                                navigationPath.append(EntryRoute.createWithContent(
+                                    title: summary.title,
+                                    content: summary.content
+                                ))
+                            }
+                        } catch {
+                            await MainActor.run {
+                                summaryError = error.localizedDescription
+                            }
+                        }
+                    }
+                },
+                isSummarizing: chatViewModel.isSummarizing
+            )
+        }
+        .alert("Summary Failed", isPresented: .init(
+            get: { summaryError != nil },
+            set: { if !$0 { summaryError = nil } }
+        )) {
+            Button("OK") { summaryError = nil }
+        } message: {
+            Text(summaryError ?? "Unable to generate summary. Please try again.")
         }
     }
 
@@ -423,6 +475,13 @@ public struct ContentView: View {
             }
             .toolbar(.hidden, for: .tabBar)
             .environment(\.fabVisible, false)
+        case .createWithContent(let prefillTitle, let prefillContent):
+            AddEntryView(state: .createWithContent(title: prefillTitle, content: prefillContent)) { title, text in
+                entryViewModel.createEntry(title: title, text: text)
+                navigationPath.removeLast()
+            }
+            .toolbar(.hidden, for: .tabBar)
+            .environment(\.fabVisible, false)
         case .edit(let entry):
             AddEntryView(state: .edit(entry)) { title, text in
                 var updated = entry
@@ -493,7 +552,6 @@ public struct ContentView: View {
     ContentView()
         .environment(\.previewEntryViewModel, entryViewModel)
         .environment(\.previewInitialTab, .digDeeper)
-        .environment(\.previewSkipLoadEntries, true)
         .environmentObject(AuthViewModel())
         .useTheme()
         .useTypography()

@@ -22,7 +22,6 @@ public struct LearnAboutYourselfView: View {
     private let speechOwnerId = "LearnAboutYourselfView"
 
     @State private var entryText: String = ""
-    @State private var isProcessing: Bool = false
     @State private var showSTTError = false
     @State private var showPermissionDenied = false
     @FocusState private var isFocused: Bool
@@ -143,36 +142,17 @@ public struct LearnAboutYourselfView: View {
 
             Spacer()
 
-            // Circular checkmark save button
-            saveButton
+            // Character counter nav button
+            WordCounterNavButton(
+                characterCount: characterCount,
+                minimumCharacters: 100,
+                buttonSize: 40,
+                onTap: { completeStep() }
+            )
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 8)
-    }
-
-    private var saveButton: some View {
-        Button {
-            completeStep()
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(showCheckmark ? theme.primary : theme.mutedForeground.opacity(0.3))
-                    .frame(width: 40, height: 40)
-
-                if isProcessing {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .disabled(!canProceed)
-        .accessibilityLabel("Save and continue")
-        .accessibilityHint(showCheckmark ? "Double-tap to save entry" : "Enter at least 100 characters")
     }
 
     private var titleSection: some View {
@@ -222,14 +202,6 @@ public struct LearnAboutYourselfView: View {
         entryText.trimmingCharacters(in: .whitespacesAndNewlines).count
     }
 
-    private var showCheckmark: Bool {
-        characterCount >= 100 && characterCount <= 2000
-    }
-
-    private var canProceed: Bool {
-        !isProcessing && showCheckmark
-    }
-    
     private var fabWidth: CGFloat {
         speechService.isRecording ? 96 : 48
     }
@@ -237,14 +209,8 @@ public struct LearnAboutYourselfView: View {
     // MARK: - Actions
 
     private func completeStep() {
-        guard canProceed else { return }
-
         let trimmedText = entryText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Haptic feedback
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        // Call completion handler
+        // WordCounterNavButton already provides haptic feedback
         onComplete?(trimmedText)
     }
     

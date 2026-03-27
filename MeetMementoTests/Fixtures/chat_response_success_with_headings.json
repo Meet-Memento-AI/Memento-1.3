@@ -1,0 +1,13 @@
+{
+  "reply": "Body text from assistant.",
+  "heading1": "First heading",
+  "heading2": "Second heading",
+  "sources": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "created_at": "2025-01-01T12:00:00.000Z",
+      "preview": "Journal excerpt preview"
+    }
+  ],
+  "sessionId": "550e8400-e29b-41d4-a716-446655440000"
+}

@@ -158,6 +158,20 @@ struct Theme {
     let sidebarBorder: Color
     let sidebarRing: Color
 
+    // Overlay text (white text on gradient backgrounds)
+    let overlayText: Color
+    let overlayTextSecondary: Color
+
+    // Glass effect borders
+    let glassBorder: Color
+
+    // Emotion colors (for charts)
+    let emotionJoy: Color
+    let emotionSadness: Color
+    let emotionAnger: Color
+    let emotionFear: Color
+    let emotionNeutral: Color
+
     // MARK: - Palettes
 
     static let light = Theme(
@@ -180,7 +194,7 @@ struct Theme {
         destructiveForeground: BaseColors.white,
         border: GrayScale.gray200,
         input: GrayScale.gray300,
-        inputBackground: GrayScale.gray100,
+        inputBackground: BaseColors.white,
         switchBackground: GrayScale.gray400,
         ring: PrimaryScale.primary500,
 
@@ -213,7 +227,16 @@ struct Theme {
         sidebarAccent: GrayScale.gray100,
         sidebarAccentForeground: GrayScale.gray900,
         sidebarBorder: GrayScale.gray200,
-        sidebarRing: PrimaryScale.primary500
+        sidebarRing: PrimaryScale.primary500,
+
+        overlayText: BaseColors.white,
+        overlayTextSecondary: BaseColors.white.opacity(0.8),
+        glassBorder: BaseColors.white.opacity(0.2),
+        emotionJoy: Color(hex: "#7FE87D"),
+        emotionSadness: Color(hex: "#5DD4E8"),
+        emotionAnger: Color(hex: "#F19B8D"),
+        emotionFear: Color(hex: "#B8B0E8"),
+        emotionNeutral: Color(hex: "#A0D8F0")
     )
 
     static let dark = Theme(
@@ -236,7 +259,7 @@ struct Theme {
         destructiveForeground: GrayScale.gray50,
         border: GrayScale.gray300,
         input: GrayScale.gray700,
-        inputBackground: GrayScale.gray800,
+        inputBackground: GrayScale.gray900,
         switchBackground: GrayScale.gray600,
         ring: PrimaryScale.primary400,
 
@@ -269,7 +292,16 @@ struct Theme {
         sidebarAccent: GrayScale.gray700,
         sidebarAccentForeground: GrayScale.gray50,
         sidebarBorder: GrayScale.gray700,
-        sidebarRing: PrimaryScale.primary400
+        sidebarRing: PrimaryScale.primary400,
+
+        overlayText: BaseColors.white,
+        overlayTextSecondary: BaseColors.white.opacity(0.8),
+        glassBorder: BaseColors.white.opacity(0.2),
+        emotionJoy: Color(hex: "#7FE87D"),
+        emotionSadness: Color(hex: "#5DD4E8"),
+        emotionAnger: Color(hex: "#F19B8D"),
+        emotionFear: Color(hex: "#B8B0E8"),
+        emotionNeutral: Color(hex: "#A0D8F0")
     )
 }
 

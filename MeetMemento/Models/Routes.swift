@@ -11,6 +11,7 @@ import Foundation
 public enum EntryRoute: Hashable {
     case create
     case createWithTitle(String)
+    case createWithContent(title: String, content: String)
     case edit(Entry)
 }
 
@@ -30,4 +31,10 @@ public enum AIChatRoute: Hashable {
 // MARK: - Navigation route for Monthly Insights
 public enum MonthInsightRoute: Hashable {
     case detail(monthLabel: String, entryCount: Int)
+}
+
+// MARK: - Navigation route for Drawer Menu
+public enum DrawerRoute: Hashable {
+    case aboutYourself
+    case journalGoals
 }

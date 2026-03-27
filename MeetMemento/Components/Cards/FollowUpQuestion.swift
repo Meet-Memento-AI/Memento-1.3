@@ -14,6 +14,7 @@ struct FollowUpQuestion: View {
     var onTap: (() -> Void)?
 
     // MARK: - Environment
+    @Environment(\.theme) private var theme
     @Environment(\.typography) private var type
 
     // MARK: - State
@@ -24,11 +25,11 @@ struct FollowUpQuestion: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "arrow.turn.down.right")
                 .font(type.h4)
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.overlayText)
 
             Text(question)
                 .font(type.h6)
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.overlayText)
                 .lineSpacing(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

@@ -17,19 +17,19 @@ struct ChartAccessibilityTokens {
     static let chartBackground = Color(hex: "#361562")
 
     /// Text color - Pure white achieves 12.63:1 contrast (exceeds AAA 7:1)
-    static let textPrimary = Color.white
+    static let textPrimary = BaseColors.white
 
     /// Percentage label color - Same as text, 12.63:1 contrast
-    static let textPercentage = Color.white
+    static let textPercentage = BaseColors.white
 
     /// Track/base color for bar background - 20% white = 3.8:1 contrast
-    static let barTrack = Color.white.opacity(0.15)
+    static let barTrack = BaseColors.white.opacity(0.15)
 
     /// Focus ring color - Cyan outline, 8.2:1 contrast
     static let focusRing = Color(hex: "#6FD9FF")
 
     /// Dot outline color - ensures dots are perceivable against background
-    static let dotOutline = Color.white.opacity(0.9)
+    static let dotOutline = BaseColors.white.opacity(0.9)
 
     /// Sentiment analysis emotion colors (from reference design)
     /// Colors match the provided UI with high contrast against dark purple

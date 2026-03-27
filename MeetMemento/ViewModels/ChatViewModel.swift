@@ -14,8 +14,43 @@ class ChatViewModel: ObservableObject {
     @Published var sessions: [ChatSession] = []
     @Published var isLoadingSessions: Bool = false
 
-    private let chatService = ChatService.shared
+    // Summary generation
+    @Published var isSummarizing: Bool = false
+
+    /// Whether there is an active chat conversation (1+ messages)
+    var hasActiveChat: Bool {
+        !messages.isEmpty || currentSessionId != nil
+    }
+
+    // User info
+    @Published var userName: String?
+
+    private let chatService: ChatServiceProtocol
     private let maxMessagesInMemory = 100
+
+    /// Per-session message cache to avoid re-fetching on tab switches
+    private var messageCache: [UUID: [ChatMessage]] = [:]
+
+    // MARK: - Initialization
+
+    init(chatService: ChatServiceProtocol = ChatService.shared) {
+        self.chatService = chatService
+    }
+
+    /// Fetches the user's first name for personalized welcome messages
+    func fetchUserName() async {
+        do {
+            if let profile = try await UserService.shared.getCurrentProfile(),
+               let fullName = profile.fullName {
+                let parts = fullName.split(separator: " ")
+                userName = parts.first.map(String.init)
+            }
+        } catch {
+            #if DEBUG
+            print("⚠️ [ChatViewModel] Failed to fetch user name: \(error)")
+            #endif
+        }
+    }
 
     // MARK: - JSON Content Extraction
 
@@ -98,7 +133,7 @@ class ChatViewModel: ObservableObject {
             inputText = ""
         }
 
-        let userMessage = ChatMessage(content: text, isFromUser: true)
+        let userMessage = ChatMessage(content: text, isFromUser: true, isNew: true)
         appendMessage(userMessage)
 
         isLoading = true
@@ -121,9 +156,15 @@ class ChatViewModel: ObservableObject {
                     heading1: response.heading1,
                     heading2: response.heading2,
                     body: response.reply,
-                    citations: citations.isEmpty ? nil : citations
+                    citations: citations.isEmpty ? nil : citations,
+                    isNew: true
                 )
                 appendMessage(aiMessage)
+
+                // Update cache after successful send
+                if let sessionId = currentSessionId {
+                    messageCache[sessionId] = messages
+                }
             } catch {
                 #if DEBUG
                 print("❌ [ChatViewModel] sendMessage error: \(error)")
@@ -160,6 +201,14 @@ class ChatViewModel: ObservableObject {
     /// Loads a specific session's messages
     func loadSession(_ session: ChatSession) async {
         currentSessionId = session.id
+
+        // Check cache first - if cached, show instantly without loading state
+        if let cached = messageCache[session.id] {
+            messages = cached
+            return
+        }
+
+        // Not cached - show loading state and fetch from database
         messages = []
         isLoading = true
 
@@ -169,6 +218,7 @@ class ChatViewModel: ObservableObject {
                 let (body, aiContent) = extractBodyContent(from: dto.content, role: dto.role)
 
                 if dto.role == "assistant", let aiContent = aiContent {
+                    // Loaded messages: isNew = false (default) - no animation
                     return ChatMessage.aiMessage(
                         heading1: aiContent.heading1,
                         heading2: aiContent.heading2,
@@ -177,10 +227,12 @@ class ChatViewModel: ObservableObject {
                     )
                 }
 
-                // User messages
+                // User messages: isNew = false (default)
                 return ChatMessage(content: dto.content, isFromUser: dto.role == "user")
             }
             messages = loadedMessages
+            // Cache the loaded messages
+            messageCache[session.id] = loadedMessages
         } catch {
             #if DEBUG
             print("❌ [ChatViewModel] loadSession error: \(error)")
@@ -202,6 +254,8 @@ class ChatViewModel: ObservableObject {
     func deleteSession(_ session: ChatSession) async {
         do {
             try await chatService.deleteSession(sessionId: session.id)
+            // Remove from cache
+            messageCache.removeValue(forKey: session.id)
             // Remove from local list immediately for responsiveness
             sessions.removeAll { $0.id == session.id }
             // If the deleted session was the current one, clear the chat
@@ -215,6 +269,33 @@ class ChatViewModel: ObservableObject {
             errorMessage = "Failed to delete conversation."
             showingError = true
         }
+    }
+
+    // MARK: - Retry
+
+    /// Retries sending the last user message if it failed
+    func retrySend() {
+        guard let lastUserMessage = messages.last(where: { $0.isFromUser }) else { return }
+        sendMessage(prompt: lastUserMessage.content)
+    }
+
+    // MARK: - Chat Summary
+
+    /// Generates a summary of the current chat conversation for creating a journal entry
+    func generateChatSummary() async throws -> (title: String, content: String) {
+        guard hasActiveChat else {
+            throw NSError(domain: "ChatViewModel", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No active chat to summarize"])
+        }
+
+        isSummarizing = true
+        defer { isSummarizing = false }
+
+        let summary = try await chatService.summarizeChat(
+            messages: messages,
+            sessionId: currentSessionId
+        )
+        return (summary.title, summary.content)
     }
 
     // MARK: - Regenerate

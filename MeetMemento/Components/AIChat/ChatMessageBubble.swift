@@ -9,6 +9,7 @@ import SwiftUI
 
 public struct ChatMessageBubble: View {
     let message: ChatMessage
+    var animate: Bool
     var onCitationsTapped: (() -> Void)?
     var onRedo: (() -> Void)?
 
@@ -17,10 +18,12 @@ public struct ChatMessageBubble: View {
 
     public init(
         message: ChatMessage,
+        animate: Bool = true,
         onCitationsTapped: (() -> Void)? = nil,
         onRedo: (() -> Void)? = nil
     ) {
         self.message = message
+        self.animate = animate
         self.onCitationsTapped = onCitationsTapped
         self.onRedo = onRedo
     }
@@ -59,6 +62,7 @@ public struct ChatMessageBubble: View {
             // AI messages with structured content (headings, body, citations)
             AIOutputComponent(
                 content: aiContent,
+                animate: animate,
                 onCitationsTapped: onCitationsTapped,
                 onRedo: onRedo
             )
