@@ -43,8 +43,8 @@ struct MeetMementoApp: App {
                 RootBackground()
 
                 Group {
-                    if authViewModel.isInitializing {
-                        // Show launch screen / loading while checking auth
+                    if !authViewModel.hasCheckedAuth {
+                        // Do not show Welcome/main until session + onboarding status are known (MEM-18).
                         LaunchLoadingView()
                             .useTheme()
                             .useTypography()

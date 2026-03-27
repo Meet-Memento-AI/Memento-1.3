@@ -174,7 +174,7 @@ public struct WelcomeView: View {
     WelcomeView()
         .useTheme()
         .useTypography()
-        .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel.previewAuthReadyForWelcome())
         .preferredColorScheme(.light)
 }
 
@@ -182,6 +182,6 @@ public struct WelcomeView: View {
     WelcomeView()
         .useTheme()
         .useTypography()
-        .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel.previewAuthReadyForWelcome())
         .preferredColorScheme(.dark)
 }

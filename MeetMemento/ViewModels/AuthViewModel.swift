@@ -27,7 +27,9 @@ class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
     @Published var hasCompletedOnboarding = false
     @Published var authState: AuthState = .unauthenticated
-    @Published var isInitializing: Bool = true  // Track initialization state
+    /// True only after `initializeAuth()` has finished (any branch). Root UI must not show Welcome/main until this is true.
+    @Published var hasCheckedAuth = false
+    @Published var isInitializing: Bool = true  // Busy during session restore (optional; root gates on `hasCheckedAuth`)
 
     // Pending profile from Apple Sign In (stub/flow)
     var pendingFirstName: String?
@@ -39,6 +41,11 @@ class AuthViewModel: ObservableObject {
 
     /// Restores session on app launch and checks onboarding status from DB.
     func initializeAuth() async {
+        defer {
+            self.isInitializing = false
+            self.hasCheckedAuth = true
+        }
+
         // UI tests: clear any persisted session so Welcome + stable IDs are reachable.
         let isUiTestRun =
             ProcessInfo.processInfo.arguments.contains("-UITesting")
@@ -52,7 +59,6 @@ class AuthViewModel: ObservableObject {
                 await group.next()
                 group.cancelAll()
             }
-            self.isInitializing = false
             self.isAuthenticated = false
             self.hasCompletedOnboarding = false
             self.authState = .unauthenticated
@@ -60,12 +66,6 @@ class AuthViewModel: ObservableObject {
         }
 
         self.isInitializing = true
-
-        defer {
-            Task { @MainActor in
-                self.isInitializing = false
-            }
-        }
 
         // Check for inactivity timeout FIRST (14+ days of inactivity)
         if SecurityService.shared.shouldAutoLogout() {
@@ -180,6 +180,8 @@ class AuthViewModel: ObservableObject {
         self.isAuthenticated = true
         self.hasCompletedOnboarding = true
         self.authState = .authenticated(needsOnboarding: false)
+        self.hasCheckedAuth = true
+        self.isInitializing = false
     }
 
     /// Skip to onboarding flow for UI testing (no real auth session).
@@ -187,6 +189,8 @@ class AuthViewModel: ObservableObject {
         self.isAuthenticated = true
         self.hasCompletedOnboarding = false
         self.authState = .authenticated(needsOnboarding: true)
+        self.hasCheckedAuth = true
+        self.isInitializing = false
     }
 
     func updateProfile(firstName: String, lastName: String) async throws {
@@ -332,6 +336,16 @@ class AuthViewModel: ObservableObject {
             self.authState = .unauthenticated
             self.hasCompletedOnboarding = false
         }
+    }
+}
+
+extension AuthViewModel {
+    /// SwiftUI previews for screens that expect `initializeAuth()` to have finished without running it.
+    static func previewAuthReadyForWelcome() -> AuthViewModel {
+        let vm = AuthViewModel()
+        vm.hasCheckedAuth = true
+        vm.isInitializing = false
+        return vm
     }
 }
 
