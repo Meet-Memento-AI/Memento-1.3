@@ -17,13 +17,32 @@
         h2 { color: #333; margin-top: 30px; }
         h3 { color: #555; }
         strong { color: #000; }
-        a { color: #007aff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
         ul { padding-left: 20px; }
         .meta { color: #666; font-style: italic; }
+        a { color: #0051d5; text-decoration: underline; text-underline-offset: 2px; }
+        a:hover { color: #003d9e; }
+        .skip-link {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        .skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 8px 0;
+            display: block;
+            color: #0051d5;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main id="main-content">
     <h1>Terms of Service for MeetMemento</h1>
     <p class="meta"><strong>Last Updated:</strong> October 23, 2025</p>
 
@@ -220,5 +239,6 @@
 
     <hr>
     <p class="meta"><strong>Effective Date:</strong> October 23, 2025</p>
+    </main>
 </body>
 </html>

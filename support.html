@@ -153,6 +153,35 @@
             text-decoration: underline;
         }
 
+        /* WCAG AA link contrast on light backgrounds (#667eea fails on #f8f9ff / #f5f5f5) */
+        .contact-box a,
+        footer a,
+        .section a:not(.button) {
+            color: #3730a3;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 8px 16px;
+            margin: 8px;
+            background: #3730a3;
+            color: #fff;
+            font-weight: 600;
+            border-radius: 4px;
+            z-index: 100;
+        }
+
         @media (max-width: 600px) {
             h1 {
                 font-size: 2em;
@@ -165,12 +194,14 @@
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
         <header>
             <h1>📝 MeetMemento Support</h1>
             <p>Your Personal AI-Powered Journaling Companion</p>
         </header>
 
+        <main id="main-content">
         <div class="section">
             <h2>📧 Contact Support</h2>
             <p>Need help? We're here to assist you!</p>
@@ -319,6 +350,8 @@
             <a href="https://sebmendo1.github.io/MeetMemento/privacy.html" class="button">Privacy Policy</a>
             <a href="https://sebmendo1.github.io/MeetMemento/terms.html" class="button">Terms of Service</a>
         </div>
+
+        </main>
 
         <footer>
             <p>&copy; 2025 MeetMemento. All rights reserved.</p>

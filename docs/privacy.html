@@ -17,13 +17,33 @@
         h2 { color: #333; margin-top: 30px; }
         h3 { color: #555; }
         strong { color: #000; }
-        a { color: #007aff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
         ul { padding-left: 20px; }
         .meta { color: #666; font-style: italic; }
+        /* WCAG AA: #007aff on white fails for normal text; use darker blue */
+        a { color: #0051d5; text-decoration: underline; text-underline-offset: 2px; }
+        a:hover { color: #003d9e; }
+        .skip-link {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        .skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 8px 0;
+            display: block;
+            color: #0051d5;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main id="main-content">
     <h1>Privacy Policy for MeetMemento</h1>
     <p class="meta"><strong>Last Updated:</strong> March 19, 2026</p>
 
@@ -141,5 +161,6 @@
 
     <hr>
     <p class="meta">For App Review / TestFlight: This app is a personal journaling tool designed to help users reflect on their thoughts and experiences. All user data is private and secured with industry-standard encryption and authentication.</p>
+    </main>
 </body>
 </html>

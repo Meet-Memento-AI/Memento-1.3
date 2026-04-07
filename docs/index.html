@@ -20,17 +20,40 @@
             display: inline-block;
             margin: 10px;
             padding: 15px 30px;
-            background: #007aff;
-            color: white;
+            /* Darker blue for WCAG AA contrast vs white text */
+            background: #0051d5;
+            color: #ffffff;
             text-decoration: none;
             border-radius: 8px;
-            font-weight: 500;
+            font-weight: 600;
         }
-        a:hover { background: #0051d5; }
+        a:hover { background: #003d9e; }
         .footer { margin-top: 50px; color: #666; font-size: 14px; }
+        .skip-link {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        .skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 8px 16px;
+            margin: 8px auto;
+            display: inline-block;
+            background: #003d9e;
+            color: #fff;
+            font-weight: 600;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main id="main-content">
     <h1>MeetMemento</h1>
     <p>Your Personal AI-Powered Journaling Companion</p>
 
@@ -38,9 +61,10 @@
         <a href="privacy.html">Privacy Policy</a>
         <a href="terms.html">Terms of Service</a>
     </div>
+    </main>
 
-    <div class="footer">
+    <footer class="footer">
         <p>© 2025 Sebastian Mendo. All rights reserved.</p>
-    </div>
+    </footer>
 </body>
 </html>
